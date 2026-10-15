@@ -1,4 +1,5 @@
 import { buildIcs, type ClassEvent } from '../../shared/ics';
+import { DEMO_DOMAIN } from './demo';
 import type { Booking, Settings, User } from '../../shared/types';
 
 function appUrl(): string {
@@ -19,7 +20,8 @@ function send(
   settings: Settings,
   attachments: GoogleAppsScript.Base.BlobSource[] = [],
 ): void {
-  if (!to) return;
+  // Staging demo students have undeliverable .invalid addresses; never email them.
+  if (!to || to.endsWith(DEMO_DOMAIN)) return;
   try {
     MailApp.sendEmail({
       to,

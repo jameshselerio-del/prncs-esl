@@ -35,6 +35,7 @@ export function loadBackend({ codePath = CODE_PATH, log = console, clock = creat
     setupDatabase: () => context.setupDatabase(),
     installTriggers: () => context.installTriggers(),
     sendReminders: () => context.sendReminders(),
+    seedDemoData: () => context.seedDemoData(),
     spreadsheet() {
       const id = state.properties.get('SPREADSHEET_ID');
       return id ? state.spreadsheets.get(id) : null;

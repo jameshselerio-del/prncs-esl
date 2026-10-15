@@ -15,17 +15,19 @@ cp .env.example .env.local   # fill in VITE_GOOGLE_CLIENT_ID and VITE_API_URL
 npm run dev                  # http://localhost:5173
 ```
 
-| Command                  | What it does                                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------------ |
-| `npm run dev`            | Start the SPA dev server                                                                         |
-| `npm run dev:mock`       | SPA + local mock API, no Google sign-in (see below)                                              |
-| `npm run mock-api`       | Only the mock API, on http://localhost:8787                                                      |
-| `npm test`               | Unit tests for `shared/` + backend end-to-end tests                                              |
-| `npm run test:e2e`       | Playwright browser tests against the mock backend (first run: `npx playwright install chromium`) |
-| `npm run check`          | Lint, typecheck, test and build — run before PRs                                                 |
-| `npm run build`          | Build SPA to `dist/web` and backend to `dist/backend`                                            |
-| `npm run backend:push`   | Bundle backend and push it to Apps Script with clasp                                             |
-| `npm run backend:deploy` | Push, then release it on the production `/exec` URL                                              |
+| Command                          | What it does                                                                                     |
+| -------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `npm run dev`                    | Start the SPA dev server                                                                         |
+| `npm run dev:mock`               | SPA + local mock API, no Google sign-in (see below)                                              |
+| `npm run mock-api`               | Only the mock API, on http://localhost:8787                                                      |
+| `npm test`                       | Unit tests for `shared/` + backend end-to-end tests                                              |
+| `npm run test:e2e`               | Playwright browser tests against the mock backend (first run: `npx playwright install chromium`) |
+| `npm run check`                  | Lint, typecheck, test and build — run before PRs                                                 |
+| `npm run build`                  | Build SPA to `dist/web` and backend to `dist/backend`                                            |
+| `npm run backend:push`           | Bundle backend and push it to Apps Script with clasp                                             |
+| `npm run dev:staging`            | SPA against the staging backend and Sheet                                                        |
+| `npm run backend:deploy:staging` | Push and release the backend to staging                                                          |
+| `npm run backend:deploy`         | Push, then release it on the production `/exec` URL                                              |
 
 ### Without Google: the mock API
 
@@ -90,7 +92,27 @@ updates the existing deployment to a new version, so the `/exec` URL stays the
 same. (`backend:push` alone only updates the editor's draft, which the live URL
 does not serve.)
 
-### 3. GitHub Pages
+### 3. Staging (for UAT)
+
+A second Apps Script project with its own Sheet, so changes can be tried
+without touching live data. `.clasp.staging.json` points at it.
+
+One-time setup, in the [staging Apps Script editor](https://script.google.com/d/1BecIbcNnynVPoqLWcc1zAKpb0wvDuSFKRF28g0nb9c-4uMobLJED-NHt/edit):
+
+1. **Project Settings → Script properties**:
+   - `GOOGLE_CLIENT_ID` — same as production
+   - `ENVIRONMENT` = `staging`
+   - `ADMIN_EMAIL` — the Google account that acts as the teacher on staging
+2. Run `seedDemoData` and approve the permissions. It creates the
+   "ESL Class Booking — Database (staging)" Sheet with demo students
+   (`@demo.invalid`, never emailed), weekday hours, lessons and bookings.
+3. `npm run dev:staging` and sign in. Testers sign in with their own Google
+   accounts and register as students.
+
+Release a branch to staging with `npm run backend:deploy:staging`; it doesn't
+affect production. `installTriggers` is optional on staging (reminders).
+
+### 4. GitHub Pages
 
 GitHub Pages on a **private** repository needs a paid GitHub plan; otherwise
 make the repository public.

@@ -149,6 +149,9 @@ class FakeSpreadsheet {
   getId() {
     return this.id;
   }
+  getName() {
+    return this.name;
+  }
   getUrl() {
     return `mock://spreadsheet/${this.id}`;
   }

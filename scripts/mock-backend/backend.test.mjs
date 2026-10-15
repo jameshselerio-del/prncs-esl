@@ -374,3 +374,45 @@ describe('deactivation', () => {
     expect(ok(minh, 'me').registered).toBe(true);
   });
 });
+
+describe('seedDemoData (staging)', () => {
+  const owner = mockToken('owner@gmail.com', 'Owner');
+
+  beforeEach(() => {
+    backend = fresh({ seeded: false });
+  });
+
+  it('refuses to run outside staging or without ADMIN_EMAIL', () => {
+    expect(() => backend.seedDemoData()).toThrow(/ENVIRONMENT/);
+    backend.state.properties.set('ENVIRONMENT', 'staging');
+    expect(() => backend.seedDemoData()).toThrow(/ADMIN_EMAIL/);
+  });
+
+  it('fills an empty database once, with the owner as teacher, and never emails demo students', () => {
+    backend.state.properties.set('ENVIRONMENT', 'staging');
+    backend.state.properties.set('ADMIN_EMAIL', 'Owner@Gmail.com');
+    backend.seedDemoData();
+
+    expect(backend.spreadsheet().getName()).toBe('ESL Class Booking — Database (staging)');
+    const me = ok(owner, 'me');
+    expect(me).toMatchObject({
+      registered: true,
+      user: { role: 'ADMIN' },
+      settings: { schoolName: 'ESL Classes (staging)' },
+    });
+    const bookings = ok(owner, 'allBookings');
+    expect(bookings).toHaveLength(4);
+    expect(ok(owner, 'students').map((s) => s.email)).toEqual([
+      'minh@demo.invalid',
+      'sofia@demo.invalid',
+      'yuki@demo.invalid',
+    ]);
+    expect(ok(owner, 'availability').length).toBeGreaterThan(0);
+    expect(() => backend.seedDemoData()).toThrow(/already has data/);
+
+    const upcoming = bookings.find((b) => b.status === 'CONFIRMED' && b.studentEmail === 'sofia@demo.invalid');
+    ok(owner, 'cancelBooking', { id: upcoming.id, reason: 'Testing' });
+    backend.sendReminders();
+    expect(backend.state.mail.filter((m) => m.to.endsWith('@demo.invalid'))).toEqual([]);
+  });
+});
