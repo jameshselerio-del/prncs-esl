@@ -1,5 +1,4 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import type { StudentBooking } from '../../../../shared/api';
 import type { Slot } from '../../../../shared/types';
 import { useApi, useQuery } from '../../api';
@@ -9,19 +8,14 @@ import { Modal } from '../../components/Modal';
 import { useSession } from '../../session';
 import { fmtDayHeading, fmtRange, fmtTime, localDateKey } from '../../time';
 
-/** Days shown by the compact picker on Home; the Book page shows the whole booking window. */
-const COMPACT_DAYS = 7;
-
 interface Props {
   /** The student's current upcoming confirmed classes, for the per-student limit. */
   upcoming: number;
   onBooked: (booking: StudentBooking) => void;
-  /** Home page variant: a horizontal row of the next few days and a link to all times. */
-  compact?: boolean;
 }
 
 /** Open slots grouped by day in the student's time zone, with a confirm dialog. */
-export function BookingPicker({ upcoming, onBooked, compact = false }: Props) {
+export function BookingPicker({ upcoming, onBooked }: Props) {
   const api = useApi();
   const { user, settings } = useSession();
   const slots = useQuery('availability');
@@ -32,7 +26,7 @@ export function BookingPicker({ upcoming, onBooked, compact = false }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const allDays = useMemo(() => {
+  const days = useMemo(() => {
     const map = new Map<string, Slot[]>();
     for (const s of slots.data ?? []) {
       const key = localDateKey(s.start, user.timeZone);
@@ -40,7 +34,6 @@ export function BookingPicker({ upcoming, onBooked, compact = false }: Props) {
     }
     return [...map.entries()];
   }, [slots.data, user.timeZone]);
-  const days = compact ? allDays.slice(0, COMPACT_DAYS) : allDays;
   const activeDay = days.find(([key]) => key === day) ?? days[0];
   const atLimit = upcoming >= settings.maxUpcomingPerStudent;
 
@@ -78,7 +71,7 @@ export function BookingPicker({ upcoming, onBooked, compact = false }: Props) {
       ) : days.length === 0 ? (
         <p className="empty">No open times in the next {settings.bookingWindowDays} days. Please check back later.</p>
       ) : (
-        <div className={compact ? 'booker compact' : 'booker'}>
+        <div className="booker">
           <div className="day-strip" role="tablist" aria-label="Days with open times">
             {days.map(([key, list]) => (
               <button
@@ -115,11 +108,6 @@ export function BookingPicker({ upcoming, onBooked, compact = false }: Props) {
                 </button>
               ))}
             </div>
-          )}
-          {compact && allDays.length > COMPACT_DAYS && (
-            <Link to="/book" className="more-times">
-              See all open times →
-            </Link>
           )}
         </div>
       )}
