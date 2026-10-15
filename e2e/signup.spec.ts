@@ -26,3 +26,15 @@ test('signing out returns to the sign-in screen', async ({ page }) => {
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByRole('button', { name: /Yuki Tanaka/ })).toBeVisible();
 });
+
+test('the privacy policy is linked from sign-in and loads', async ({ page }) => {
+  await page.goto('/');
+  const popup = page.waitForEvent('popup');
+  await page.getByRole('link', { name: 'Privacy policy' }).click();
+  const policy = await popup;
+  await expect(policy.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible();
+  await expect(policy.getByRole('link', { name: 'jamesh.selerio@gmail.com' })).toHaveAttribute(
+    'href',
+    'mailto:jamesh.selerio@gmail.com',
+  );
+});

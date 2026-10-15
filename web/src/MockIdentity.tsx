@@ -2,6 +2,7 @@
 // tokens of the form `email|Display Name` instead of Google ID tokens.
 import { useEffect, useState, type FormEvent } from 'react';
 import { APP_NAME } from './auth';
+import { PrivacyLink } from './components/PrivacyLink';
 
 interface Identity {
   label: string;
@@ -51,6 +52,9 @@ export function MockSignIn({ onSignIn, notice }: { onSignIn: (token: string) => 
         <input placeholder="Display name" value={name} onChange={(e) => setName(e.target.value)} />
         <button type="submit">Sign in as this email</button>
       </form>
+      <p className="hint">
+        <PrivacyLink />
+      </p>
     </main>
   );
 }

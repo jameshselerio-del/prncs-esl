@@ -999,3 +999,11 @@ button.link.danger-text {
   background: var(--accent);
   color: var(--accent-text);
 }
+
+.footer {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 16px 32px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}

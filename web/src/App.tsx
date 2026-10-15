@@ -4,6 +4,7 @@ import type { MeResult } from '../../shared/api';
 import { useApi, useQuery } from './api';
 import { APP_NAME, useAuth } from './auth';
 import { ErrorText } from './components/Bits';
+import { PrivacyLink } from './components/PrivacyLink';
 import { ProfileForm } from './components/ProfileForm';
 import { Profile } from './pages/Profile';
 import { Book } from './pages/student/Book';
@@ -93,6 +94,9 @@ export function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+        <footer className="footer">
+          <PrivacyLink />
+        </footer>
       </HashRouter>
     </SessionContext.Provider>
   );
@@ -126,6 +130,9 @@ function Register({ me, onDone }: { me: Extract<MeResult, { registered: false }>
         <button type="button" className="link" onClick={() => signOut()}>
           Use another account
         </button>
+      </p>
+      <p className="hint">
+        How we use your information: <PrivacyLink />
       </p>
     </main>
   );

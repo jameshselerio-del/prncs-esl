@@ -1,4 +1,5 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { PrivacyLink } from './components/PrivacyLink';
 import { MockIdentityBar, MockSignIn } from './MockIdentity';
 
 const TOKEN_KEY = 'idToken';
@@ -105,6 +106,9 @@ function SignIn({ onSignIn, notice }: { onSignIn: (token: string) => void; notic
       {notice && <p className="notice">{notice}</p>}
       <div ref={buttonRef} />
       {error && <p className="error">{error}</p>}
+      <p className="hint">
+        <PrivacyLink />
+      </p>
     </main>
   );
 }
