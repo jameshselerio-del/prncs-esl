@@ -416,3 +416,28 @@ describe('seedDemoData (staging)', () => {
     expect(backend.state.mail.filter((m) => m.to.endsWith('@demo.invalid'))).toEqual([]);
   });
 });
+
+describe('launch automation', () => {
+  it('installs the hourly reminder trigger on the first request, once', () => {
+    expect(backend.state.triggers).toEqual([]);
+    ok(yuki, 'me');
+    ok(teacher, 'me');
+    expect(backend.state.triggers.map((t) => [t.handler, t.everyHours])).toEqual([['sendReminders', 1]]);
+    expect(backend.state.properties.get('TRIGGERS_VERSION')).toBe('1');
+  });
+
+  it('links emails to the published site unless APP_URL overrides it, and not on staging', () => {
+    const [slot] = ok(yuki, 'availability');
+    ok(yuki, 'book', { start: slot.start, topic: '', studentNote: '' });
+    expect(mailTo('yuki@example.com').at(-1).body).toContain('https://jameshselerio-del.github.io/prncs-esl/');
+
+    backend.state.properties.set('APP_URL', 'https://classes.example.org/');
+    ok(minh, 'book', { start: ok(minh, 'availability')[5].start, topic: '', studentNote: '' });
+    expect(mailTo('minh@example.com').at(-1).body).toContain('https://classes.example.org/');
+
+    backend.state.properties.delete('APP_URL');
+    backend.state.properties.set('ENVIRONMENT', 'staging');
+    ok(minh, 'book', { start: ok(minh, 'availability')[10].start, topic: '', studentNote: '' });
+    expect(mailTo('minh@example.com').at(-1).body).not.toContain('github.io');
+  });
+});

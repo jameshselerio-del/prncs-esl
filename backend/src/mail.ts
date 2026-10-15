@@ -1,10 +1,7 @@
 import { buildIcs, type ClassEvent } from '../../shared/ics';
+import { appUrl } from './config';
 import { DEMO_DOMAIN } from './demo';
 import type { Booking, Settings, User } from '../../shared/types';
-
-function appUrl(): string {
-  return PropertiesService.getScriptProperties().getProperty('APP_URL') ?? '';
-}
 
 /** e.g. "Mon, Oct 26, 2026, 9:00 AM (Asia/Tokyo)" in the recipient's time zone. */
 function when(b: Booking, timeZone: string): string {

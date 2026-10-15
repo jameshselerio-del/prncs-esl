@@ -90,8 +90,34 @@ export function ensureDatabase(): void {
   }
 }
 
+/** Bump to reinstall triggers on the next request after a deploy that changes them. */
+export const TRIGGERS_VERSION = '1';
+
+/**
+ * Called on every API request: installs the hourly reminder trigger once, so nobody has to
+ * run installTriggers by hand. A failure is logged and retried at most once an hour.
+ */
+export function ensureTriggers(): void {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('TRIGGERS_VERSION') === TRIGGERS_VERSION) return;
+  const cache = CacheService.getScriptCache();
+  if (cache.get('triggers_failed')) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30_000);
+  try {
+    if (props.getProperty('TRIGGERS_VERSION') === TRIGGERS_VERSION) return;
+    installTriggers();
+  } catch (err) {
+    console.error('Could not install triggers', err);
+    cache.put('triggers_failed', '1', 3600);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 /** Run once from the editor: replaces all triggers with an hourly class-reminder job. */
 export function installTriggers(): void {
   for (const t of ScriptApp.getProjectTriggers()) ScriptApp.deleteTrigger(t);
   ScriptApp.newTrigger('sendReminders').timeBased().everyHours(1).create();
+  setConfig('TRIGGERS_VERSION', TRIGGERS_VERSION);
 }
