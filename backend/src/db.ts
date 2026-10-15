@@ -12,6 +12,7 @@ import type {
   Weekday,
 } from '../../shared/types';
 import { getConfig } from './config';
+import { ApiError } from './errors';
 
 /** Column order of every tab. The header row in the Sheet must match. */
 export const SCHEMA = {
@@ -49,7 +50,11 @@ let spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet | null = null;
 function sheet(table: Table): GoogleAppsScript.Spreadsheet.Sheet {
   spreadsheet ??= SpreadsheetApp.openById(getConfig('SPREADSHEET_ID'));
   const found = spreadsheet.getSheetByName(table);
-  if (!found) throw new Error(`Missing sheet tab: ${table}. Run setupDatabase().`);
+  if (!found) {
+    throw new ApiError(
+      `The database is missing the "${table}" tab. The teacher needs to run setupDatabase in the Apps Script editor.`,
+    );
+  }
   return found;
 }
 
