@@ -111,41 +111,50 @@ export function clearFailures(email: string): void {
   CacheService.getScriptCache().remove(failureKey(email));
 }
 
-// --------------------------------------------------------------- Reset codes
+// ------------------------------------------------------------- Emailed codes
 
-interface ResetEntry {
+/** Reset codes prove access to an account's email; sign-up codes prove a new email is the student's. */
+export type CodePurpose = 'reset' | 'signup';
+
+interface CodeEntry<T> {
   /** SHA-256 of email + code */
   h: string;
   tries: number;
   /** issued at, ms */
   at: number;
+  /** Purpose-specific data kept until the code is used (e.g. the new account's username and hash). */
+  data: T;
 }
 
-const resetKey = (email: string) => 'pwreset_' + toHex(sha256(utf8(email)));
+const codeKey = (purpose: CodePurpose, email: string) => `pw${purpose}_` + toHex(sha256(utf8(email)));
 const codeHash = (email: string, code: string) => toHex(sha256(utf8(`${email}|${code}`)));
 
-/** A new 6-digit code, or null if one was sent less than a minute ago (stops email flooding). */
-export function issueResetCode(email: string, now: Date): string | null {
-  const cache = CacheService.getScriptCache();
-  const raw = cache.get(resetKey(email));
-  if (raw && now.getTime() - (JSON.parse(raw) as ResetEntry).at < RESET_RESEND_SECONDS * 1000) return null;
+/** True if a code for this email was sent less than a minute ago (stops email flooding). */
+export function codeRecentlySent(purpose: CodePurpose, email: string, now: Date): boolean {
+  const raw = CacheService.getScriptCache().get(codeKey(purpose, email));
+  return !!raw && now.getTime() - (JSON.parse(raw) as CodeEntry<unknown>).at < RESET_RESEND_SECONDS * 1000;
+}
+
+/** Issues a new 6-digit code (replacing any earlier one), valid for 15 minutes. */
+export function issueCode<T>(purpose: CodePurpose, email: string, now: Date, data: T): string {
   const code = String(parseInt(randomHex().slice(0, 12), 16) % 1_000_000).padStart(6, '0');
-  const entry: ResetEntry = { h: codeHash(email, code), tries: 0, at: now.getTime() };
-  cache.put(resetKey(email), JSON.stringify(entry), RESET_CODE_SECONDS);
+  const entry: CodeEntry<T> = { h: codeHash(email, code), tries: 0, at: now.getTime(), data };
+  CacheService.getScriptCache().put(codeKey(purpose, email), JSON.stringify(entry), RESET_CODE_SECONDS);
   return code;
 }
 
-/** Uses up a reset code: true if it matches; a wrong guess counts against the code. */
-export function consumeResetCode(email: string, code: string, now: Date): boolean {
+/** Uses up a code: its data if it matches, else null; a wrong guess counts against the code. */
+export function consumeCode<T>(purpose: CodePurpose, email: string, code: string, now: Date): { data: T } | null {
   const cache = CacheService.getScriptCache();
-  const raw = cache.get(resetKey(email));
-  if (!raw) return false;
-  const entry = JSON.parse(raw) as ResetEntry;
+  const key = codeKey(purpose, email);
+  const raw = cache.get(key);
+  if (!raw) return null;
+  const entry = JSON.parse(raw) as CodeEntry<T>;
   if (entry.tries < MAX_CODE_TRIES && constantTimeEqual(codeHash(email, code.trim()), entry.h)) {
-    cache.remove(resetKey(email));
-    return true;
+    cache.remove(key);
+    return { data: entry.data };
   }
   const secondsLeft = Math.floor(RESET_CODE_SECONDS - (now.getTime() - entry.at) / 1000);
-  if (secondsLeft > 0) cache.put(resetKey(email), JSON.stringify({ ...entry, tries: entry.tries + 1 }), secondsLeft);
-  return false;
+  if (secondsLeft > 0) cache.put(key, JSON.stringify({ ...entry, tries: entry.tries + 1 }), secondsLeft);
+  return null;
 }

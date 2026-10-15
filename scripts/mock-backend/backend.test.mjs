@@ -564,3 +564,74 @@ describe('password sign-in', () => {
     expect(mailTo('minh@example.com')).toEqual([]);
   });
 });
+
+describe('password sign-up', () => {
+  const signedOut = (action, payload) => backend.call('', action, payload);
+  const NEW = { email: 'Kenji@Example.com', username: 'kenji', password: 'sakura 2026' };
+  const codeFrom = (email) => /code to finish creating your account is (\d{6})/.exec(mailTo(email).at(-1).body)[1];
+
+  it('confirms the email with a code, then the new user completes a profile', () => {
+    expect(signedOut('requestSignUp', NEW)).toEqual({ ok: true, data: { sent: true } });
+    const code = codeFrom('kenji@example.com');
+    // Nothing is created until the code is used.
+    expect(backend.sheet('Logins').records()).toEqual([]);
+
+    const wrong = code === '000000' ? '111111' : '000000';
+    expect(signedOut('completeSignUp', { email: NEW.email, code: wrong }).ok).toBe(false);
+    const done = signedOut('completeSignUp', { email: NEW.email, code });
+    expect(done.ok).toBe(true);
+    const token = done.data.token;
+    expect(ok(token, 'me')).toMatchObject({ registered: false, email: 'kenji@example.com', suggestedName: '' });
+    expect(err(token, 'myBookings').error).toContain('complete your profile');
+
+    ok(token, 'register', {
+      name: 'Kenji Sato',
+      timeZone: 'Asia/Tokyo',
+      level: '',
+      nativeLanguage: '',
+      goals: '',
+      contact: '',
+    });
+    expect(ok(token, 'me')).toMatchObject({ registered: true, user: { role: 'STUDENT' }, username: 'kenji' });
+    expect(signedOut('signInWithPassword', { login: 'kenji', password: NEW.password }).ok).toBe(true);
+    expect(signedOut('completeSignUp', { email: NEW.email, code }).ok).toBe(false);
+  });
+
+  it('a password sign-up that never finished its profile can still sign in and reset', () => {
+    signedOut('requestSignUp', NEW);
+    signedOut('completeSignUp', { email: NEW.email, code: codeFrom('kenji@example.com') });
+    expect(signedOut('signInWithPassword', { login: 'kenji@example.com', password: NEW.password }).ok).toBe(true);
+    signedOut('requestPasswordReset', { login: 'kenji' });
+    expect(mailTo('kenji@example.com').at(-1).body).toMatch(/^Hi,\n/);
+  });
+
+  it('does not reveal existing accounts, and emails their owner instead', () => {
+    const res = signedOut('requestSignUp', { ...NEW, email: 'yuki@example.com', username: 'newyuki' });
+    expect(res).toEqual({ ok: true, data: { sent: true } });
+    const email = mailTo('yuki@example.com').at(-1);
+    expect(email.subject).toContain('already have an account');
+    expect(email.body).not.toMatch(/\d{6}/);
+    expect(backend.sheet('Logins').records()).toEqual([]);
+  });
+
+  it('validates details, refuses taken usernames and limits codes to one a minute', () => {
+    ok(yuki, 'setPassword', { username: 'yuki.t', currentPassword: '', newPassword: 'green tea 123' });
+    expect(signedOut('requestSignUp', { ...NEW, username: 'yuki.t' }).error).toContain('taken');
+    expect(signedOut('requestSignUp', { ...NEW, email: 'not-an-email' }).error).toContain('valid email');
+    expect(signedOut('requestSignUp', { ...NEW, password: 'short' }).error).toContain('at least 8');
+
+    signedOut('requestSignUp', NEW);
+    signedOut('requestSignUp', NEW);
+    expect(mailTo('kenji@example.com')).toHaveLength(1);
+    backend.clock.advance(61_000);
+    signedOut('requestSignUp', NEW);
+    expect(mailTo('kenji@example.com')).toHaveLength(2);
+  });
+
+  it('refuses the code if the username was taken in the meantime', () => {
+    signedOut('requestSignUp', NEW);
+    const code = codeFrom('kenji@example.com');
+    ok(yuki, 'setPassword', { username: 'kenji', currentPassword: '', newPassword: 'green tea 123' });
+    expect(signedOut('completeSignUp', { email: NEW.email, code }).error).toContain('took that username');
+  });
+});

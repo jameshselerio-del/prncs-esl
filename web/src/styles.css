@@ -630,6 +630,10 @@ section {
   align-self: center;
 }
 
+.password-signin .signup-prompt {
+  text-align: center;
+}
+
 .password-settings {
   margin-top: 36px;
   padding-top: 24px;

@@ -53,14 +53,22 @@ docs/      Requirements, architecture, backlog.
    Unknown users may only call `me` and `register` (open sign-up), which
    creates a Student row from their profile.
 
-### Username and password (optional)
+### Username and password
 
-A registered user can add a username and password on their Profile page
-(`setPassword`; changing it needs the current password). Accounts always start
-with Google, so every email address is verified by Google.
+Students can sign up without Google, or add a password to a Google account.
 
-- `signInWithPassword`, `requestPasswordReset` and `resetPassword` need no token
-  (`SIGNED_OUT_ACTIONS`). Sign-in accepts the username or the email.
+- **Sign-up:** `requestSignUp` checks the email, username and password, then
+  emails a 6-digit code; the username and password hash wait in `CacheService`
+  until `completeSignUp` uses the code, which creates the `Logins` row and
+  returns a session. The new user is then unregistered (no `Users` row) and
+  completes their profile with `register`, exactly like a new Google user. If
+  the email already has an account, the visitor gets the same response and the
+  account owner is emailed instead.
+- **Add or change a password:** `setPassword` on the Profile page (changing it
+  needs the current password).
+- `signInWithPassword`, `requestPasswordReset`, `resetPassword`,
+  `requestSignUp` and `completeSignUp` need no token (`SIGNED_OUT_ACTIONS`).
+  Sign-in accepts the username or the email.
 - Passwords are stored as PBKDF2-HMAC-SHA256 hashes with a random salt in the
   `Logins` tab, never in `Users`, so no handler can return them by accident.
   Hashing is pure TypeScript (`shared/crypto.ts`) because Apps Script has no

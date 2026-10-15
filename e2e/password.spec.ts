@@ -94,3 +94,27 @@ test('a forgotten password is reset with an emailed code', async ({ page }) => {
   await reset.getByRole('button', { name: 'Set new password and sign in' }).click();
   await expect(page.getByRole('heading', { name: 'Hi, Yuki' })).toBeVisible();
 });
+
+test('a visitor signs up with email, username and password, then completes a profile', async ({ page }) => {
+  await page.goto('/');
+  await signInForm(page).getByRole('button', { name: 'Create an account' }).click();
+  const signup = page.getByRole('form', { name: 'Create an account' });
+  await signup.getByLabel('Email').fill('kenji@example.com');
+  await signup.getByLabel('Username').fill('Kenji');
+  await signup.getByLabel(/^Password/).fill('sakura 2026');
+  await signup.getByLabel('Confirm password').fill('sakura 2026');
+  await signup.getByRole('button', { name: 'Email me a code' }).click();
+
+  const confirm = page.getByRole('form', { name: 'Confirm your email' });
+  await expect(confirm.getByText('kenji@example.com')).toBeVisible();
+  const mail = (await (await page.request.get(`${API_URL}/__mock/mail`)).json()) as { to: string; body: string }[];
+  const body = mail.filter((m) => m.to === 'kenji@example.com').at(-1)!.body;
+  const code = /creating your account is (\d{6})/.exec(body)![1];
+  await confirm.getByLabel('Code').fill(code);
+  await confirm.getByRole('button', { name: 'Create account' }).click();
+
+  await expect(page.getByRole('heading', { name: /Welcome to/ })).toBeVisible();
+  await page.getByLabel('Name', { exact: true }).fill('Kenji Sato');
+  await page.getByRole('button', { name: 'Create my account' }).click();
+  await expect(page.getByRole('heading', { name: 'Hi, Kenji' })).toBeVisible();
+});

@@ -25,7 +25,7 @@ export type MeResult =
   | {
       registered: false;
       email: string;
-      /** Name from the Google account, to prefill the sign-up form. */
+      /** Name from the Google account, to prefill the sign-up form (empty after password sign-up). */
       suggestedName: string;
       settings: Settings;
     };
@@ -95,6 +95,10 @@ export interface Api {
   signInWithPassword: [{ login: string; password: string }, SessionToken];
   requestPasswordReset: [{ login: string }, { sent: true }];
   resetPassword: [{ login: string; code: string; newPassword: string }, SessionToken];
+  /** Emails a code to confirm the address; the account is created by completeSignUp. */
+  requestSignUp: [{ email: string; username: string; password: string }, { sent: true }];
+  /** Creates the login and signs in; the new user then completes their profile with `register`. */
+  completeSignUp: [{ email: string; code: string }, SessionToken];
 
   // Anyone signed in with Google (including not-yet-registered students)
   me: [Empty, MeResult];
@@ -127,7 +131,13 @@ export interface Api {
 export type Action = keyof Api;
 
 /** Actions that need no token: they sign the user in. */
-export const SIGNED_OUT_ACTIONS: readonly Action[] = ['signInWithPassword', 'requestPasswordReset', 'resetPassword'];
+export const SIGNED_OUT_ACTIONS: readonly Action[] = [
+  'signInWithPassword',
+  'requestPasswordReset',
+  'resetPassword',
+  'requestSignUp',
+  'completeSignUp',
+];
 
 /** Actions an unregistered (new) Google user may call. */
 export const PUBLIC_ACTIONS: readonly Action[] = ['me', 'register'];
