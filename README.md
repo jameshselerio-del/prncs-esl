@@ -15,13 +15,14 @@ cp .env.example .env.local   # fill in VITE_GOOGLE_CLIENT_ID and VITE_API_URL
 npm run dev                  # http://localhost:5173
 ```
 
-| Command                | What it does                                          |
-| ---------------------- | ----------------------------------------------------- |
-| `npm run dev`          | Start the SPA dev server                              |
-| `npm test`             | Unit tests (Vitest) for `shared/` domain logic        |
-| `npm run check`        | Lint, typecheck, test and build — run before PRs      |
-| `npm run build`        | Build SPA to `dist/web` and backend to `dist/backend` |
-| `npm run backend:push` | Bundle backend and push it to Apps Script with clasp  |
+| Command                  | What it does                                          |
+| ------------------------ | ----------------------------------------------------- |
+| `npm run dev`            | Start the SPA dev server                              |
+| `npm test`               | Unit tests (Vitest) for `shared/` domain logic        |
+| `npm run check`          | Lint, typecheck, test and build — run before PRs      |
+| `npm run build`          | Build SPA to `dist/web` and backend to `dist/backend` |
+| `npm run backend:push`   | Bundle backend and push it to Apps Script with clasp  |
+| `npm run backend:deploy` | Push, then release it on the production `/exec` URL   |
 
 ## First-time setup
 
@@ -37,8 +38,9 @@ npm run dev                  # http://localhost:5173
 
 ### 2. Apps Script backend
 
-1. `npx clasp login`, then `npx clasp create --type standalone --title "PRNCS Leaves API" --rootDir dist/backend`
-   (or copy `.clasp.json.example` to `.clasp.json` and paste an existing script ID).
+1. The Apps Script project already exists; `.clasp.json` links this repo to it.
+   Run `npx clasp login` with a Google account that has edit access to the
+   script (ask the owner to share it).
 2. `npm run backend:push`.
 3. In the Apps Script editor → **Project Settings → Script properties**, add:
    - `GOOGLE_CLIENT_ID` — same value as `VITE_GOOGLE_CLIENT_ID`
@@ -52,8 +54,10 @@ npm run dev                  # http://localhost:5173
    `you@example.com | Your Name | PH | ADMIN | | REGULAR | 2026-01-01 | 1,2,3,4,5 | TRUE`.
    Add PH/JP public holidays to the `Holidays` tab.
 
-After later backend changes: `npm run backend:push`, then **Deploy → Manage
-deployments → Edit → New version** so the same `/exec` URL serves the new code.
+After later backend changes: `npm run backend:deploy`. It pushes the code and
+updates the existing deployment to a new version, so the `/exec` URL stays the
+same. (`backend:push` alone only updates the editor's draft, which the live URL
+does not serve.)
 
 ### 3. GitHub Pages
 

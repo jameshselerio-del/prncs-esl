@@ -9,6 +9,7 @@
     "build:web": "vite build",
     "build:backend": "node backend/build.mjs",
     "backend:push": "npm run build:backend && clasp push --force",
+    "backend:deploy": "npm run backend:push && clasp update-deployment AKfycby_nMCJQ9WAmXNMOquoM6qwD-JJYeg9B8z1CIav2ySDo0wJVhnYBa4yZT8vrcMrfcKBcQ --description \"Release\"",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p backend/tsconfig.json --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
