@@ -1,4 +1,5 @@
 import type { Holiday, IsoDate, LeaveRequest, LeaveType, User } from './types';
+import type { ImportPlan } from './userImport';
 import type { USER_COLUMNS } from './users';
 
 /** The contract between the SPA and the Apps Script backend. */
@@ -42,6 +43,14 @@ export interface SaveUserPayload {
   isNew: boolean;
 }
 
+export interface ImportUsersPayload {
+  csv: string;
+  /** true = validate and preview only; false = apply (only if there are no errors). */
+  dryRun: boolean;
+}
+
+export type ImportSummary = Omit<ImportPlan, 'users'> & { applied: boolean };
+
 export interface PendingApproval extends LeaveRequest {
   requesterName: string;
 }
@@ -59,6 +68,7 @@ export interface Api {
   decideRequest: [DecidePayload, LeaveRequest];
   listUsers: [Empty, User[]];
   saveUser: [SaveUserPayload, User];
+  importUsers: [ImportUsersPayload, ImportSummary];
 }
 
 export type Action = keyof Api;

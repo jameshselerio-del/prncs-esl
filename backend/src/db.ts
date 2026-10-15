@@ -65,6 +65,22 @@ function updateRow(table: Table, keyColumn: string, key: string, patch: Row): vo
   s.getRange(rowIndex + 1, 1, 1, header.length).setValues([updated]);
 }
 
+/**
+ * Rewrites every Users row in one setValues call, so an import lands completely or not at all.
+ * Trailing old rows are blanked in the same call.
+ */
+function replaceUserRows(users: User[]): void {
+  const s = sheet('Users');
+  const header = s.getRange(1, 1, 1, s.getLastColumn()).getDisplayValues()[0];
+  const rows = users.map((u) => {
+    const row = userToRow(u);
+    return header.map((h) => row[h] ?? '');
+  });
+  const height = Math.max(rows.length, s.getLastRow() - 1);
+  while (rows.length < height) rows.push(header.map(() => ''));
+  if (height > 0) s.getRange(2, 1, height, header.length).setValues(rows);
+}
+
 const nullable = (v: string): string | null => (v === '' ? null : v);
 
 // Lenient: rows edited by hand in the Sheet still load; admin saves are validated separately.
@@ -133,6 +149,7 @@ export const db = {
 
   insertUser: (u: User): void => appendRow('Users', userToRow(u)),
   updateUser: (u: User): void => updateUserRow(u),
+  replaceUsers: (users: User[]): void => replaceUserRows(users),
   insertRequest: (r: LeaveRequest): void => appendRow('Requests', toRow(r)),
   updateRequest: (id: string, patch: Partial<LeaveRequest>): void => updateRow('Requests', 'id', id, toRow(patch)),
   insertLedger: (e: LedgerEntry): void => appendRow('Ledger', toRow(e)),

@@ -288,3 +288,16 @@ label.check {
 tr.inactive td {
   color: var(--muted);
 }
+
+a.button {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.success {
+  color: var(--ok);
+}

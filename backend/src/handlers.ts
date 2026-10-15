@@ -11,6 +11,7 @@ import {
   validateNewRequest,
 } from '../../shared/policy';
 import type { IsoDate, LeaveRequest, LeaveType, Office, User } from '../../shared/types';
+import { planUserImport } from '../../shared/userImport';
 import { USER_COLUMNS, userFromRecord, validateDirectory } from '../../shared/users';
 import { db } from './db';
 import { ApiError } from './errors';
@@ -278,6 +279,30 @@ export const handlers: { [A in Action]: Handler<A> } = {
       if (isNew) db.insertUser(user);
       else db.updateUser(user);
       return user;
+    });
+  },
+
+  importUsers(me, payload) {
+    requireAdmin(me);
+    const csv = requireString(payload, 'csv', 500_000);
+    const dryRun = payload.dryRun !== false;
+
+    return withLock(() => {
+      const plan = planUserImport(csv, db.users());
+      const self = plan.users.find((u) => u.email === me.email);
+      if (self && (self.role !== 'ADMIN' || !self.active)) {
+        plan.errors.unshift({
+          line: 0,
+          email: me.email,
+          messages: ['The file would remove your own admin role or deactivate you.'],
+        });
+      }
+      const { users, ...summary } = plan;
+      const changed = summary.creates.length + summary.updates.length > 0;
+      if (dryRun || summary.errors.length || !changed) return { ...summary, applied: false };
+
+      db.replaceUsers(users);
+      return { ...summary, applied: true };
     });
   },
 };
