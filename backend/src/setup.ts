@@ -1,24 +1,64 @@
-import { ANNUAL_CREDITS } from '../../shared/policy';
 import { setConfig } from './config';
-import { db, SCHEMA, type Table } from './db';
+import { SCHEMA, type Table } from './db';
+
+/** Tabs from the earlier leave-tracking version; kept (renamed) rather than deleted. */
+const LEGACY_TABS = ['Requests', 'Ledger', 'Holidays'];
 
 /**
- * Run once from the Apps Script editor. Creates the database spreadsheet in the
- * owner's Drive (or completes an existing one) with a tab and header row per table.
+ * Converts a leave-tracking Users tab in place: keeps email, name and active;
+ * ADMIN stays ADMIN, everyone else becomes STUDENT.
+ */
+function migrateLegacyUsers(sheet: GoogleAppsScript.Spreadsheet.Sheet): void {
+  const values = sheet.getDataRange().getDisplayValues();
+  const header = values[0];
+  if (!header.includes('office')) return;
+  const col = (name: string) => header.indexOf(name);
+  const now = new Date().toISOString();
+  const rows = values
+    .slice(1)
+    .filter((r) => r.some((c) => c !== ''))
+    .map((r) => {
+      const isAdmin = r[col('role')].toUpperCase() === 'ADMIN';
+      const row: Record<string, string> = {
+        email: r[col('email')].trim().toLowerCase(),
+        name: r[col('name')],
+        role: isAdmin ? 'ADMIN' : 'STUDENT',
+        active: r[col('active')].toUpperCase() === 'FALSE' ? 'FALSE' : 'TRUE',
+        timeZone: r[col('office')] === 'JP' ? 'Asia/Tokyo' : 'Asia/Manila',
+        createdAt: now,
+      };
+      return SCHEMA.Users.map((c) => row[c] ?? '');
+    });
+  sheet.clearContents();
+  if (rows.length) sheet.getRange(2, 1, rows.length, SCHEMA.Users.length).setValues(rows);
+  console.log(`Migrated ${rows.length} user(s) from the leave-tracking format.`);
+}
+
+/**
+ * Run from the Apps Script editor after deploying. Creates the database spreadsheet
+ * in the owner's Drive if needed, migrates a leave-tracking database, and makes sure
+ * every tab exists with the right header row. Safe to run more than once.
  */
 export function setupDatabase(): void {
   const props = PropertiesService.getScriptProperties();
   let id = props.getProperty('SPREADSHEET_ID');
   if (!id) {
-    id = SpreadsheetApp.create('PRNCS Leaves Tracking — Database').getId();
+    id = SpreadsheetApp.create('ESL Class Booking — Database').getId();
     setConfig('SPREADSHEET_ID', id);
   }
   const ss = SpreadsheetApp.openById(id);
 
+  for (const name of LEGACY_TABS) {
+    const legacy = ss.getSheetByName(name);
+    if (legacy && !ss.getSheetByName(`old_${name}`)) legacy.setName(`old_${name}`);
+  }
+  const users = ss.getSheetByName('Users');
+  if (users) migrateLegacyUsers(users);
+
   for (const table of Object.keys(SCHEMA) as Table[]) {
     const columns = [...SCHEMA[table]];
     const sheet = ss.getSheetByName(table) ?? ss.insertSheet(table);
-    // Plain-text format stops Sheets from turning dates and IDs into numbers.
+    // Plain-text format stops Sheets from turning dates, times and IDs into numbers.
     sheet.getRange(1, 1, sheet.getMaxRows(), columns.length).setNumberFormat('@');
     sheet.getRange(1, 1, 1, columns.length).setValues([columns]).setFontWeight('bold');
     sheet.setFrozenRows(1);
@@ -29,34 +69,8 @@ export function setupDatabase(): void {
   console.log(`Database ready: ${ss.getUrl()}`);
 }
 
-/** Run once: schedules the yearly credit refresh for 1 January. */
+/** Run once from the editor: replaces all triggers with an hourly class-reminder job. */
 export function installTriggers(): void {
-  for (const t of ScriptApp.getProjectTriggers()) {
-    if (t.getHandlerFunction() === 'grantYearlyCredits') ScriptApp.deleteTrigger(t);
-  }
-  // Runs daily; grantYearlyCredits is idempotent, so a missed 1 January run is caught up the next day.
-  ScriptApp.newTrigger('grantYearlyCredits').timeBased().everyDays(1).atHour(1).create();
-}
-
-/** Grants the yearly credits to every active regular employee who has no grant for this year yet. */
-export function grantYearlyCredits(): void {
-  const year = new Date().getFullYear();
-  const ledger = db.ledger();
-  const now = new Date().toISOString();
-  for (const user of db.users()) {
-    if (!user.active || user.status !== 'REGULAR') continue;
-    const granted = ledger.some((e) => e.email === user.email && e.year === year && e.kind === 'GRANT');
-    if (granted) continue;
-    db.insertLedger({
-      id: Utilities.getUuid(),
-      email: user.email,
-      year,
-      delta: ANNUAL_CREDITS,
-      kind: 'GRANT',
-      requestId: null,
-      note: `Yearly credits ${year}`,
-      createdBy: 'system',
-      createdAt: now,
-    });
-  }
+  for (const t of ScriptApp.getProjectTriggers()) ScriptApp.deleteTrigger(t);
+  ScriptApp.newTrigger('sendReminders').timeBased().everyHours(1).create();
 }

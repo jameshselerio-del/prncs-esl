@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-Leave tracking app: React SPA (`web/`) on GitHub Pages → Google Apps Script API
-(`backend/`) → Google Sheet as database. Read `docs/requirements.md` and
-`docs/architecture.md` before changing behaviour.
+ESL class booking site (one teacher, many students): React SPA (`web/`) on
+GitHub Pages → Google Apps Script API (`backend/`) → Google Sheet as database.
+Read `docs/requirements.md` and `docs/architecture.md` before changing behaviour.
 
 ## Rules
 
@@ -10,11 +10,16 @@ Leave tracking app: React SPA (`web/`) on GitHub Pages → Google Apps Script AP
   APIs) and are unit-tested there. Backend and frontend both import them.
 - **The backend is authoritative.** Every permission and policy check must run in
   `backend/src/handlers.ts`; frontend checks are previews only.
-- **Writes go through `withLock`** so concurrent requests can't double-spend credits.
-- **Credits are a ledger.** Never store a balance; append `Ledger` rows
-  (GRANT/USE/REFUND/ADJUST).
-- **Dates are `YYYY-MM-DD` strings**, compared as strings and parsed as UTC via
-  `shared/dates.ts`. "Today" is computed in the employee's office time zone.
+- **Writes go through `withLock`**, and bookings re-check the slot inside the
+  lock, so two students can't book the same time.
+- **Times:** bookings are UTC instants (ISO strings). Teacher availability and
+  time off are Manila wall time (`shared/time.ts`, fixed UTC+8). The SPA formats
+  every time in the viewer's profile time zone (`web/src/time.ts`); never use the
+  device zone directly.
+- **Never send `privateNote` to students** — student-facing handlers return
+  `studentView(booking)`.
+- Teacher-only actions are listed in `ADMIN_ACTIONS` (`shared/api.ts`) and
+  enforced in `backend/src/main.ts`.
 - Sheet columns are defined once in `SCHEMA` (`backend/src/db.ts`); add columns
   at the end and update `setupDatabase`.
 - New API actions: add to `Api` in `shared/api.ts`, then a handler in

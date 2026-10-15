@@ -4,7 +4,7 @@ import { build } from 'esbuild';
 import { copyFileSync, mkdirSync } from 'node:fs';
 
 const outdir = 'dist/backend';
-const entryPoints = ['doGet', 'doPost', 'setupDatabase', 'installTriggers', 'grantYearlyCredits'];
+const entryPoints = ['doGet', 'doPost', 'setupDatabase', 'installTriggers', 'sendReminders'];
 
 mkdirSync(outdir, { recursive: true });
 

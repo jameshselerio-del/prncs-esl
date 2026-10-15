@@ -1,17 +1,18 @@
-import type { Action, ApiResponse } from '../../shared/api';
+import { ADMIN_ACTIONS, PUBLIC_ACTIONS, type Action, type ApiResponse } from '../../shared/api';
 import { verifyIdToken } from './auth';
 import { db } from './db';
 import { ApiError } from './errors';
-import { handlers } from './handlers';
+import { handlers, sendReminders } from './handlers';
 
-export { grantYearlyCredits, installTriggers, setupDatabase } from './setup';
+export { installTriggers, setupDatabase } from './setup';
+export { sendReminders };
 
 function json(body: ApiResponse<unknown>): GoogleAppsScript.Content.TextOutput {
   return ContentService.createTextOutput(JSON.stringify(body)).setMimeType(ContentService.MimeType.JSON);
 }
 
 export function doGet(): GoogleAppsScript.Content.TextOutput {
-  return json({ ok: true, data: 'PRNCS Leaves API' });
+  return json({ ok: true, data: 'ESL Booking API' });
 }
 
 /**
@@ -21,14 +22,18 @@ export function doGet(): GoogleAppsScript.Content.TextOutput {
 export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Content.TextOutput {
   try {
     const body = JSON.parse(e.postData.contents) as { action?: string; idToken?: unknown; payload?: unknown };
-    const email = verifyIdToken(body.idToken);
-    const me = db.users().find((u) => u.email === email);
-    if (!me || !me.active) throw new ApiError(`${email} does not have access. Contact HR.`, 'AUTH');
+    const identity = verifyIdToken(body.idToken);
+    const me = db.users().find((u) => u.email === identity.email) ?? null;
+    if (me && !me.active) throw new ApiError('Your account has been deactivated. Please contact your teacher.', 'AUTH');
 
     const action = body.action as Action;
     if (!Object.prototype.hasOwnProperty.call(handlers, action)) throw new ApiError('Unknown action.');
+    if (!me && !PUBLIC_ACTIONS.includes(action)) throw new ApiError('Please complete your profile first.');
+    if (ADMIN_ACTIONS.includes(action) && me?.role !== 'ADMIN') throw new ApiError('Only the teacher can do this.');
+
     const payload = typeof body.payload === 'object' && body.payload !== null ? body.payload : {};
-    return json({ ok: true, data: handlers[action](me, payload as Record<string, unknown>) });
+    const data = handlers[action]({ me, identity, now: new Date() }, payload as Record<string, unknown>);
+    return json({ ok: true, data });
   } catch (err) {
     if (err instanceof ApiError) return json({ ok: false, error: err.message, code: err.code });
     console.error(err);

@@ -7,19 +7,26 @@ interface TokenInfo {
   email: string;
   email_verified: string;
   exp: string;
+  name?: string;
+}
+
+export interface Identity {
+  email: string;
+  /** Display name from the Google account (may be empty). */
+  name: string;
 }
 
 const ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
 
-/** Verifies a Google Identity Services ID token and returns the signed-in email (lowercased). */
-export function verifyIdToken(idToken: unknown): string {
+/** Verifies a Google Identity Services ID token and returns the signed-in identity (email lowercased). */
+export function verifyIdToken(idToken: unknown): Identity {
   if (typeof idToken !== 'string' || idToken === '') throw new ApiError('Please sign in.', 'AUTH');
 
   const cache = CacheService.getScriptCache();
   const cacheKey =
-    'tok_' + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, idToken));
+    'id_' + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, idToken));
   const cached = cache.get(cacheKey);
-  if (cached) return cached;
+  if (cached) return JSON.parse(cached) as Identity;
 
   const res = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken), {
     muteHttpExceptions: true,
@@ -37,7 +44,7 @@ export function verifyIdToken(idToken: unknown): string {
     throw new ApiError('Invalid sign-in. Please sign in again.', 'AUTH');
   }
 
-  const email = info.email.toLowerCase();
-  cache.put(cacheKey, email, Math.min(600, secondsLeft));
-  return email;
+  const identity: Identity = { email: info.email.toLowerCase(), name: info.name ?? '' };
+  cache.put(cacheKey, JSON.stringify(identity), Math.min(600, secondsLeft));
+  return identity;
 }

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 
 const TOKEN_KEY = 'idToken';
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+export const APP_NAME = (import.meta.env.VITE_APP_NAME as string | undefined) || 'ESL Classes';
 
 interface AuthContextValue {
   idToken: string | null;
@@ -86,8 +87,8 @@ function SignIn({ onSignIn, notice }: { onSignIn: (token: string) => void; notic
 
   return (
     <main className="signin">
-      <h1>PRNCS Leaves</h1>
-      <p>Sign in with your Google account to continue.</p>
+      <h1>{APP_NAME}</h1>
+      <p>Book one-to-one English classes. Sign in with your Google account to continue.</p>
       {notice && <p className="notice">{notice}</p>}
       <div ref={buttonRef} />
       {error && <p className="error">{error}</p>}
