@@ -33,9 +33,9 @@
   line-height: 1.5;
 }
 
+/* Dark theme: follows the system unless the user picked Light or Dark (html[data-theme]). Ink Moss is the dark base; Sage becomes the accent so it stays readable. */
 @media (prefers-color-scheme: dark) {
-  /* Ink Moss is the dark base; Sage becomes the accent so it stays readable. */
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #222724;
     --surface: #2e3430;
     --surface-2: #373e39;
@@ -55,6 +55,27 @@
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
     color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: #222724;
+  --surface: #2e3430;
+  --surface-2: #373e39;
+  --text: #ecede8;
+  --muted: #b3b5ad;
+  --border: #424a44;
+  --border-strong: #56615a;
+  --accent: #9db09a;
+  --accent-hover: #b2c2af;
+  --accent-soft: #3a4a3a;
+  --accent-text: #1e2420;
+  --bark: #d2a989;
+  --bark-soft: #4a3b30;
+  --pebble-text: #a29e97;
+  --danger: #e8907f;
+  --danger-soft: #4a2a24;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
+  color-scheme: dark;
 }
 
 * {
@@ -144,13 +165,13 @@ a:hover {
   border-bottom: 1px solid var(--border);
 }
 
-.topbar nav {
+.topbar > nav {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-.topbar nav a {
+.topbar > nav a {
   color: var(--muted);
   text-decoration: none;
   padding: 8px 14px;
@@ -158,23 +179,15 @@ a:hover {
   font-weight: 500;
 }
 
-.topbar nav a:hover {
+.topbar > nav a:hover {
   color: var(--text);
   background: var(--surface-2);
 }
 
-.topbar nav a.active {
+.topbar > nav a.active {
   color: var(--accent);
   background: var(--accent-soft);
   font-weight: 600;
-}
-
-.who {
-  margin-left: auto;
-  color: var(--muted);
-  display: flex;
-  gap: 12px;
-  align-items: center;
 }
 
 .page {
@@ -235,17 +248,222 @@ section {
 .footer {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 0 20px 36px;
+  padding: 20px 20px 36px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  border-top: 1px solid var(--border);
   font-size: 0.875rem;
   color: var(--muted);
 }
 
+.signin-page .footer {
+  position: relative;
+  width: 100%;
+  border-top: 0;
+}
+
+/* ---------- Account menu ---------- */
+
+.account {
+  position: relative;
+  margin-left: auto;
+}
+
+.account-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  min-height: 44px;
+  border-color: var(--border);
+  background: var(--surface);
+  font-weight: 500;
+}
+
+.account-button[aria-expanded='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.account-button .chevron {
+  flex: none;
+  color: var(--muted);
+}
+
+.avatar {
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--accent-soft);
+}
+
+.avatar.initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.account-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 40;
+  width: min(320px, calc(100vw - 24px));
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 40px rgb(46 52 48 / 0.18);
+}
+
+.account-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.account-who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.account-who strong {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
+.account-who .hint {
+  overflow-wrap: anywhere;
+}
+
+.account-who .tag {
+  margin: 4px 6px 0 0;
+}
+
+.account-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+}
+
+.account-facts dt {
+  color: var(--muted);
+}
+
+.account-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.account-links {
+  display: flex;
+  flex-direction: column;
+}
+
+.account-links a {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.account-links a:hover {
+  background: var(--surface-2);
+}
+
+.account-theme {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: none;
+}
+
+.account-theme legend {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 0 6px;
+}
+
+.account-theme .segmented {
+  display: flex;
+}
+
+.account-theme label {
+  position: relative;
+  flex: 1;
+  text-align: center;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.account-theme label.active {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
+.account-theme label:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* The real radio covers its label invisibly, so clicks and keyboard both reach it. */
+.account-theme input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.account-signout {
+  width: 100%;
+  color: var(--danger);
+  border-color: var(--border);
+}
+
+.account-signout:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* ---------- Sign-in and welcome ---------- */
 
-.signin {
+/* The footer sits outside <main> so it is the page's contentinfo landmark. */
+.signin-page {
   position: relative;
   overflow: hidden;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.signin {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -907,6 +1125,22 @@ tr.inactive td {
   align-items: start;
 }
 
+/* Home page: the next few days in a row above the times. */
+.booker.compact {
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.booker.compact .day-strip {
+  flex-direction: row;
+  overflow-x: auto;
+  max-height: none;
+}
+
+.more-times {
+  justify-self: start;
+}
+
 .day-strip {
   display: flex;
   flex-direction: column;
@@ -1298,8 +1532,14 @@ button.link.danger-text {
     padding: 10px 16px;
   }
 
-  .who {
-    margin-left: 0;
+  .account-name {
+    display: none;
+  }
+
+  /* Logo and account share the first row; the menu wraps below. */
+  .topbar > nav {
+    order: 3;
+    width: 100%;
   }
 
   .page {

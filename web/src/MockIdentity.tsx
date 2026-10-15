@@ -3,7 +3,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { APP_NAME } from './auth';
 import { SignInLayout } from './brand';
-import { LegalLinks } from './components/LegalLinks';
 
 interface Identity {
   label: string;
@@ -52,9 +51,6 @@ export function MockSignIn({ onSignIn, notice }: { onSignIn: (token: string) => 
         <input placeholder="Display name" value={name} onChange={(e) => setName(e.target.value)} />
         <button type="submit">Sign in as this email</button>
       </form>
-      <p className="hint">
-        <LegalLinks />
-      </p>
     </SignInLayout>
   );
 }

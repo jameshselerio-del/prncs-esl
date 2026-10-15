@@ -12,8 +12,9 @@
   font-family: 'Karla', 'Helvetica Neue', 'Hiragino Sans', sans-serif;
   line-height: 1.6;
 }
+/* Dark theme: follows the system unless the user picked Light or Dark (html[data-theme]). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #222724;
     --surface: #2e3430;
     --text: #ecede8;
@@ -24,6 +25,18 @@
     --bark: #d2a989;
     color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: #222724;
+  --surface: #2e3430;
+  --text: #ecede8;
+  --muted: #b3b5ad;
+  --border: #424a44;
+  --accent: #9db09a;
+  --accent-soft: #3a4a3a;
+  --bark: #d2a989;
+  color-scheme: dark;
 }
 body {
   margin: 0;
