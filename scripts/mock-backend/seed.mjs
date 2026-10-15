@@ -100,7 +100,7 @@ export function seed(backend) {
   backend.insert(
     'Settings',
     Object.entries({
-      schoolName: 'ESL Classes (mock)',
+      schoolName: 'Komorebi English (mock)',
       defaultMeetingLink: 'https://meet.example.com/ana-reyes',
     }).map(([key, value]) => ({ key, value })),
   );

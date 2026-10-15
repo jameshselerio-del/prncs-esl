@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, Link, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import type { MeResult } from '../../shared/api';
 import { useApi, useQuery } from './api';
 import { APP_NAME, useAuth } from './auth';
+import { BRAND, Logo } from './brand';
 import { ErrorText } from './components/Bits';
 import { LegalLinks, PrivacyLink, TermsLink } from './components/LegalLinks';
 import { ProfileForm } from './components/ProfileForm';
@@ -58,7 +59,9 @@ export function App() {
     <SessionContext.Provider value={session}>
       <HashRouter>
         <header className="topbar">
-          <strong className="brand">{session.settings.schoolName || APP_NAME}</strong>
+          <Link to="/" className="logo-link" aria-label={`${BRAND.name} home`}>
+            <Logo />
+          </Link>
           <nav aria-label="Main">
             {nav.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.to === '/'}>
@@ -107,8 +110,14 @@ function Register({ me, onDone }: { me: Extract<MeResult, { registered: false }>
   const { signOut } = useAuth();
   return (
     <main className="page narrow">
-      <h1>Welcome to {me.settings.schoolName || APP_NAME}</h1>
-      <p>Tell us a little about yourself to start booking classes.</p>
+      <Logo />
+      <h1>Welcome to {APP_NAME}</h1>
+      <p>
+        Tell us a little about yourself to start booking classes ·{' '}
+        <span className="ja" lang="ja">
+          ようこそ
+        </span>
+      </p>
       <ProfileForm
         initial={{
           name: me.suggestedName,

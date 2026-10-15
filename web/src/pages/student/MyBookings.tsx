@@ -5,6 +5,7 @@ import { useQuery } from '../../api';
 import { ErrorText } from '../../components/Bits';
 import { BookingViews, useBookingView, ViewSwitcher } from '../../components/BookingViews';
 import { useSession } from '../../session';
+import { Bilingual } from '../../brand';
 import { BookingDetail } from './BookingDetail';
 
 type Filter = 'upcoming' | 'past' | 'cancelled' | 'all';
@@ -42,7 +43,7 @@ export function MyBookings() {
       <div className="toolbar">
         <h2>My bookings</h2>
         <Link to="/book" className="button primary">
-          Book a class
+          <Bilingual en="Book a class" ja="予約する" />
         </Link>
       </div>
       {justBooked && <p className="success">Your class is booked. A confirmation email is on its way.</p>}

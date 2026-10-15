@@ -1,0 +1,117 @@
+/* Komorebi English brand styles for the static legal pages (privacy.html, terms.html). */
+:root {
+  --bg: #f4f4f0;
+  --surface: #ffffff;
+  --text: #2e3430;
+  --muted: #5a5751;
+  --border: #e1e0da;
+  --accent: #4f6b4e;
+  --accent-soft: #e3e9df;
+  --bark: #7b5b43;
+  color-scheme: light;
+  font-family: 'Karla', 'Helvetica Neue', 'Hiragino Sans', sans-serif;
+  line-height: 1.6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #222724;
+    --surface: #2e3430;
+    --text: #ecede8;
+    --muted: #b3b5ad;
+    --border: #424a44;
+    --accent: #9db09a;
+    --accent-soft: #3a4a3a;
+    --bark: #d2a989;
+    color-scheme: dark;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+header a {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  text-decoration: none;
+}
+.mark {
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+.mark .leaf {
+  fill: var(--accent);
+}
+.mark .vein {
+  fill: var(--accent-soft);
+  stroke: var(--accent-soft);
+}
+.word {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.word .name {
+  font-family: 'Zen Maru Gothic', sans-serif;
+  font-weight: 500;
+  font-size: 1.35rem;
+}
+.word .sub {
+  font-family: 'Zen Maru Gothic', sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.32em;
+  color: var(--bark);
+  margin-top: 3px;
+}
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+}
+article {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 8px 28px 28px;
+}
+h1,
+h2 {
+  font-family: 'Zen Maru Gothic', sans-serif;
+  font-weight: 500;
+  line-height: 1.25;
+}
+h1 {
+  font-size: 2rem;
+}
+h2 {
+  font-size: 1.2rem;
+  margin-top: 30px;
+}
+a {
+  color: var(--accent);
+}
+.muted {
+  color: var(--muted);
+}
+footer {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+@media (max-width: 640px) {
+  article {
+    padding: 4px 18px 20px;
+  }
+}

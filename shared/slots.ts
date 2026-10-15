@@ -3,7 +3,7 @@ import { DAY_MS, HOUR_MS, MINUTE_MS, parseClock, teacherDateOf, teacherWallToUtc
 import type { AvailabilityRule, Booking, IsoInstant, Settings, Slot, TimeOff } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
-  schoolName: 'ESL Classes',
+  schoolName: 'Komorebi English',
   lessonMinutes: 50,
   slotStepMinutes: 30,
   minNoticeHours: 12,

@@ -1,10 +1,11 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { SignInLayout } from './brand';
 import { LegalLinks } from './components/LegalLinks';
 import { MockIdentityBar, MockSignIn } from './MockIdentity';
 
 const TOKEN_KEY = 'idToken';
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-export const APP_NAME = (import.meta.env.VITE_APP_NAME as string | undefined) || 'ESL Classes';
+export const APP_NAME = (import.meta.env.VITE_APP_NAME as string | undefined) || 'Komorebi English';
 /** `npm run dev:mock`: talk to the local mock API with test identities instead of Google. */
 const MOCK = import.meta.env.MODE === 'mock';
 
@@ -100,15 +101,14 @@ function SignIn({ onSignIn, notice }: { onSignIn: (token: string) => void; notic
   }, [onSignIn]);
 
   return (
-    <main className="signin">
-      <h1>{APP_NAME}</h1>
-      <p>Book one-to-one English classes. Sign in with your Google account to continue.</p>
+    <SignInLayout>
+      <p>Sign in with your Google account to book and manage your lessons.</p>
       {notice && <p className="notice">{notice}</p>}
       <div ref={buttonRef} />
       {error && <p className="error">{error}</p>}
       <p className="hint">
         <LegalLinks />
       </p>
-    </main>
+    </SignInLayout>
   );
 }

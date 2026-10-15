@@ -33,7 +33,10 @@ test('the terms and privacy policy are linked from sign-in and load', async ({ p
   await page.getByRole('link', { name: 'Terms of Service' }).click();
   const terms = await termsPopup;
   await expect(terms.getByRole('heading', { name: 'Terms of Service' })).toBeVisible();
-  await expect(terms.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', 'privacy.html');
+  await expect(terms.getByRole('article').getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute(
+    'href',
+    'privacy.html',
+  );
   await terms.close();
 
   const popup = page.waitForEvent('popup');

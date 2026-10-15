@@ -5,6 +5,7 @@ import { useQuery } from '../../api';
 import { ErrorText, ExternalLink, LessonCard, RichText, StatusBadge } from '../../components/Bits';
 import { useSession } from '../../session';
 import { fmtRange, relative } from '../../time';
+import { Bilingual, LeafShape } from '../../brand';
 import { BookingDetail } from './BookingDetail';
 
 export function Home() {
@@ -32,6 +33,7 @@ export function Home() {
       <ErrorText error={bookings.error ?? lessons.error} />
 
       <section className="hero card">
+        <LeafShape className="hero-leaf" />
         <span className="label">Next class</span>
         {!bookings.data ? (
           <p>Loading…</p>
@@ -44,7 +46,9 @@ export function Home() {
             <div className="actions">
               {next.meetingLink && (
                 <ExternalLink href={next.meetingLink}>
-                  <span className="button primary">Join class</span>
+                  <span className="button primary">
+                    <Bilingual en="Join class" ja="参加する" />
+                  </span>
                 </ExternalLink>
               )}
               <button type="button" onClick={() => setSelected(next)}>
@@ -57,7 +61,7 @@ export function Home() {
           <>
             <p>You have no upcoming classes.</p>
             <Link to="/book" className="button primary">
-              Book a class
+              <Bilingual en="Book a class" ja="予約する" />
             </Link>
           </>
         )}

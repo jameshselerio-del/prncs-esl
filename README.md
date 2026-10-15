@@ -1,4 +1,4 @@
-# ESL Class Booking
+# Komorebi English — class booking
 
 A booking site where students book one-to-one ESL classes with a single
 teacher. Static React app on GitHub Pages, backed by a Google Apps Script API
