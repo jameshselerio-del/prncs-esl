@@ -16,7 +16,8 @@ test('a new Google user completes a profile and becomes a student', async ({ pag
   await page.getByRole('button', { name: 'Create my account' }).click();
 
   await expect(page.getByRole('heading', { name: 'Hi, Nora' })).toBeVisible();
-  await expect(page.getByText('You have no upcoming classes.')).toBeVisible();
+  await expect(page.getByText('You have no upcoming classes yet.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Book your first class' })).toBeVisible();
 });
 
 test('signing out returns to the sign-in screen', async ({ page }) => {

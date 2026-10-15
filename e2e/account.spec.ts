@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { api, openAs, resetData, TEACHER, YUKI } from './helpers';
+import { openAs, resetData, TEACHER, YUKI } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await resetData(page);
@@ -63,24 +63,4 @@ test('every page has the footer with the legal links', async ({ page }) => {
   await expect(footer.getByRole('link', { name: 'Privacy Policy' })).toBeVisible();
   await expect(footer).toContainText('Komorebi English');
   await signedIn.close();
-});
-
-test('a student books a class from the Home page', async ({ page }) => {
-  await openAs(page, YUKI);
-  const before = ((await api(page, YUKI, 'myBookings')).data as unknown[]).length;
-  const section = page.getByRole('region', { name: /Book a class/ });
-  await section.locator('.slot').first().click();
-  await page
-    .locator('dialog[open]')
-    .getByLabel(/What would you like to focus on/)
-    .fill('Small talk');
-  await page
-    .locator('dialog[open]')
-    .getByRole('button', { name: /Book class/ })
-    .click();
-
-  await expect(section.getByRole('status')).toContainText('Booked');
-  const after = (await api(page, YUKI, 'myBookings')).data as { topic: string }[];
-  expect(after).toHaveLength(before + 1);
-  expect(after.map((b) => b.topic)).toContain('Small talk');
 });

@@ -17,6 +17,26 @@ test('home shows the next class with lesson details and past feedback', async ({
   await expect(page.locator('.lesson summary', { hasText: 'Job interview practice' })).toBeVisible();
 });
 
+test('home always offers booking and summarises upcoming classes', async ({ page }) => {
+  await openAs(page, YUKI);
+  // Yuki already has a class booked, and the booking button is still there.
+  const cta = page.getByRole('region', { name: 'Book your next class' });
+  await expect(cta.getByRole('link', { name: /Book a class/ })).toBeVisible();
+
+  const summary = page.getByRole('region', { name: 'Upcoming classes' });
+  await expect(summary).toContainText('1 booked');
+  await expect(summary.getByRole('button', { name: /Business emails/ })).toBeVisible();
+  await summary.getByRole('link', { name: 'View My bookings' }).click();
+  await expect(page.getByRole('heading', { name: 'My bookings' })).toBeVisible();
+
+  await page.goBack();
+  await cta.getByRole('link', { name: /Book a class/ }).click();
+  await expect(page.getByRole('heading', { name: /Book a class/ })).toBeVisible();
+  // The Home page itself has no slot picker any more.
+  await page.goBack();
+  await expect(page.locator('.slot')).toHaveCount(0);
+});
+
 test('books a class, sees it in all three views, and the slot disappears for others', async ({ page }) => {
   await openAs(page, YUKI, '/book');
   const firstSlot = page.locator('.slot-grid .slot').first();
