@@ -35,6 +35,8 @@ shared/    Pure TypeScript domain logic + types. Unit-tested with Vitest.
 web/       React SPA (Vite). Deployed to GitHub Pages.
 backend/   Apps Script source (TypeScript), bundled by esbuild into one
            Code.js and pushed with clasp.
+scripts/   Dev tooling. mock-backend/ runs the bundled Code.js in Node with
+           in-memory Google fakes (local mock API + backend end-to-end tests).
 docs/      Requirements, architecture, backlog.
 ```
 
