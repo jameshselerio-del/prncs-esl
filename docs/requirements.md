@@ -64,12 +64,17 @@ see their lessons and manage their profile.
 
 ## Notifications (email)
 
-| Event                   | Recipients                      |
-| ----------------------- | ------------------------------- |
-| Class booked            | Student (confirmation), teacher |
-| Cancelled by student    | Teacher                         |
-| Cancelled by teacher    | Student                         |
-| Reminder (~24 h before) | Student                         |
+| Event                   | Recipients                      | Calendar file (.ics)                |
+| ----------------------- | ------------------------------- | ----------------------------------- |
+| Class booked by student | Student (confirmation), teacher | Invite to student, event to teacher |
+| Class booked by teacher | Student                         | Invite to student                   |
+| Cancelled by student    | Student (confirmation), teacher | Cancellation to both                |
+| Cancelled by teacher    | Student                         | Cancellation to student             |
+| Reminder (~24 h before) | Student                         | —                                   |
+
+Calendar files use a stable UID per booking, so a cancellation removes the
+event that the original invite added. Changes made later in the app (for
+example a new meeting link) are not re-sent as calendar updates.
 
 ## Non-functional
 

@@ -1,3 +1,4 @@
+import { buildIcs, type ClassEvent } from '../../shared/ics';
 import type { Booking, Settings, User } from '../../shared/types';
 
 function appUrl(): string {
@@ -11,18 +12,63 @@ function when(b: Booking, timeZone: string): string {
   return `${start} – ${end} (${timeZone})`;
 }
 
-function send(to: string, subject: string, lines: string[], settings: Settings): void {
+function send(
+  to: string,
+  subject: string,
+  lines: string[],
+  settings: Settings,
+  attachments: GoogleAppsScript.Base.BlobSource[] = [],
+): void {
   if (!to) return;
   try {
     MailApp.sendEmail({
       to,
       subject: `[${settings.schoolName}] ${subject}`,
       body: [...lines, '', appUrl()].join('\n'),
+      attachments,
     });
   } catch (err) {
     // A failed notification (e.g. daily quota reached) must not roll back the booking itself.
     console.error('Email failed', err);
   }
+}
+
+/**
+ * A calendar file for one booking. The UID is stable per booking, so the cancellation
+ * (sequence 1) replaces the original event (sequence 0) in the recipient's calendar.
+ * Students get an invitation from the teacher; the teacher's own copy is a plain event.
+ */
+function calendarFile(
+  b: Booking,
+  student: User,
+  teacher: User | undefined,
+  settings: Settings,
+  forTeacher: boolean,
+  cancelled: boolean,
+): GoogleAppsScript.Base.BlobSource {
+  const event: ClassEvent = {
+    uid: `${b.id}@prncs-esl`,
+    start: b.start,
+    end: b.end,
+    summary: forTeacher ? `English class: ${student.name}` : `${settings.schoolName}: English class`,
+    description: [
+      b.topic ? `Topic: ${b.topic}` : '',
+      b.meetingLink ? `Join: ${b.meetingLink}` : 'The meeting link will appear in the app before class.',
+      appUrl() ? `Details: ${appUrl()}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    url: b.meetingLink,
+    organizer: teacher ? { name: teacher.name, email: teacher.email } : null,
+    attendee: forTeacher ? null : { name: student.name, email: student.email },
+    method: cancelled ? 'CANCEL' : forTeacher ? 'PUBLISH' : 'REQUEST',
+    sequence: cancelled ? 1 : 0,
+  };
+  return Utilities.newBlob(
+    buildIcs(event, new Date()),
+    `text/calendar; charset=utf-8; method=${event.method}`,
+    cancelled ? 'cancelled-class.ics' : 'class.ics',
+  );
 }
 
 export const notify = {
@@ -39,8 +85,10 @@ export const notify = {
           : `Your class is confirmed for ${when(b, student.timeZone)}.`,
         b.meetingLink ? `Meeting link: ${b.meetingLink}` : 'The meeting link will appear in the app before class.',
         `You can cancel up to ${settings.cancelNoticeHours} hours before the class.`,
+        'Open the attached calendar file to add the class to your calendar.',
       ],
       settings,
+      [calendarFile(b, student, teacher, settings, false, false)],
     );
     if (teacher && !byTeacher) {
       send(
@@ -52,31 +100,36 @@ export const notify = {
           b.studentNote ? `Note: ${b.studentNote}` : '',
         ].filter(Boolean),
         settings,
+        [calendarFile(b, student, teacher, settings, true, false)],
       );
     }
   },
 
+  /** Both sides get a cancellation file, so the event disappears from their calendars. */
   cancelled(b: Booking, student: User, teacher: User | undefined, byTeacher: boolean, settings: Settings): void {
     const reason = b.cancelReason ? `Reason: ${b.cancelReason}` : '';
-    if (byTeacher) {
-      send(
-        student.email,
-        'Your class was cancelled',
-        [
-          `Hi ${student.name},`,
-          '',
-          `Your teacher cancelled the class on ${when(b, student.timeZone)}.`,
-          reason,
-          'Please book another time in the app.',
-        ].filter(Boolean),
-        settings,
-      );
-    } else if (teacher) {
+    send(
+      student.email,
+      byTeacher ? 'Your class was cancelled' : 'You cancelled a class',
+      [
+        `Hi ${student.name},`,
+        '',
+        byTeacher
+          ? `Your teacher cancelled the class on ${when(b, student.timeZone)}.`
+          : `You cancelled your class on ${when(b, student.timeZone)}.`,
+        reason,
+        'Please book another time in the app.',
+      ].filter(Boolean),
+      settings,
+      [calendarFile(b, student, teacher, settings, false, true)],
+    );
+    if (teacher && !byTeacher) {
       send(
         teacher.email,
         `Cancelled: ${student.name}`,
         [`${student.name} cancelled the class on ${when(b, teacher.timeZone)}.`, reason].filter(Boolean),
         settings,
+        [calendarFile(b, student, teacher, settings, true, true)],
       );
     }
   },

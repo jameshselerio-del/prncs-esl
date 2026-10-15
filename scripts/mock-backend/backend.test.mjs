@@ -177,6 +177,45 @@ describe('booking', () => {
   });
 });
 
+describe('calendar invites', () => {
+  const ics = (message) => message.attachments?.[0]?.getDataAsString().replace(/\r\n /g, '') ?? '';
+
+  it('attaches an invite to the student and an event to the teacher, then cancels both', () => {
+    const [slot] = ok(yuki, 'availability');
+    const booking = ok(yuki, 'book', { start: slot.start, topic: 'Travel', studentNote: '' });
+    const [studentMail] = mailTo('yuki@example.com');
+    const [teacherMail] = mailTo(TEACHER.email);
+    const stamp = slot.start.replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+    expect(studentMail.attachments[0].getContentType()).toBe('text/calendar; charset=utf-8; method=REQUEST');
+    expect(ics(studentMail)).toContain(`UID:${booking.id}@prncs-esl`);
+    expect(ics(studentMail)).toContain(`DTSTART:${stamp}`);
+    expect(ics(studentMail)).toContain(`ORGANIZER;CN="${TEACHER.name}":mailto:${TEACHER.email}`);
+    expect(ics(studentMail)).toContain('mailto:yuki@example.com');
+    expect(ics(teacherMail)).toContain('METHOD:PUBLISH');
+    expect(ics(teacherMail)).toContain('SUMMARY:English class: Yuki Tanaka');
+
+    ok(yuki, 'cancelBooking', { id: booking.id, reason: '' });
+    const studentCancel = mailTo('yuki@example.com').at(-1);
+    const teacherCancel = mailTo(TEACHER.email).at(-1);
+    for (const m of [studentCancel, teacherCancel]) {
+      expect(ics(m)).toContain('METHOD:CANCEL');
+      expect(ics(m)).toContain('SEQUENCE:1');
+      expect(ics(m)).toContain(`UID:${booking.id}@prncs-esl`);
+    }
+    expect(studentCancel.subject).toMatch(/You cancelled a class/);
+  });
+
+  it('sends no invite with reminders', () => {
+    const next = ok(yuki, 'myBookings').find((b) => b.id === 'booking-yuki-next');
+    backend.clock.set(Date.parse(next.start) - 20 * HOUR);
+    backend.sendReminders();
+    const reminders = backend.state.mail.filter((x) => /Reminder/.test(x.subject));
+    expect(reminders.length).toBeGreaterThan(0);
+    for (const m of reminders) expect(m.attachments ?? []).toEqual([]);
+  });
+});
+
 describe('teacher books for a student', () => {
   const saturday = '2026-10-17T02:00:00.000Z'; // outside weekly availability
   const forYuki = (start, extra = {}) =>
