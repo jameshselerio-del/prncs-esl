@@ -13,6 +13,7 @@ import type { AvailabilityRule, Booking, Level, Profile, Settings, User, Weekday
 import {
   availabilityErrors,
   bookingDetailsErrors,
+  isEmail,
   lessonErrors,
   normalizeUsername,
   PASSWORD_MAX,
@@ -30,10 +31,11 @@ import { notify } from './mail';
 import {
   checkNotLockedOut,
   clearFailures,
-  consumeResetCode,
+  codeRecentlySent,
+  consumeCode,
   createSession,
   hashPassword,
-  issueResetCode,
+  issueCode,
   recordFailure,
   verifyPassword,
 } from './passwords';
@@ -134,32 +136,46 @@ type Handler<A extends Action> = (ctx: Context, payload: Payload) => Api[A][1];
 const INCORRECT_LOGIN = 'Incorrect username or password.';
 const DUMMY_HASH = `pbkdf2-sha256$10000$${'0'.repeat(32)}$${'0'.repeat(64)}`;
 
-/** The login and its active user for a username or email, or null. */
-function findAccount(loginName: string): { login: Login; user: User } | null {
+/** A login's owner: their Users row, or just the email if they signed up but haven't finished their profile. */
+type Owner = Pick<User, 'email' | 'name'>;
+
+/** The login for a username or email, unless its user is deactivated; null if none. */
+function findAccount(loginName: string): { login: Login; owner: Owner } | null {
   const key = loginName.trim().toLowerCase();
   if (!key) return null;
   const login = db.logins().find((l) => (key.includes('@') ? l.email === key : l.username === key));
-  const found = login && db.users().find((u) => u.email === login.email);
-  return login && found?.active ? { login, user: found } : null;
+  if (!login) return null;
+  const found = db.users().find((u) => u.email === login.email);
+  if (found && !found.active) return null;
+  return { login, owner: found ?? { email: login.email, name: '' } };
 }
 
 /** Stores a new password and returns a session for it; older sessions stop working. */
-function savePassword(account: User, username: string, password: string, existing: Login | undefined, now: Date) {
+function savePassword(owner: Owner, username: string, password: string, existing: Login | undefined, now: Date) {
   const login: Login = {
-    email: account.email,
+    email: owner.email,
     username,
     passwordHash: hashPassword(password),
     updatedAt: now.toISOString(),
   };
   withLock(() => {
-    const taken = db.logins().some((l) => l.username === username && l.email !== account.email);
-    if (taken) throw new ApiError('That username is taken. Please choose another.');
-    if (db.logins().some((l) => l.email === account.email)) db.updateLogin(login);
+    const taken = db.logins().some((l) => l.username === username && l.email !== owner.email);
+    if (taken) throw new ApiError(USERNAME_TAKEN);
+    if (db.logins().some((l) => l.email === owner.email)) db.updateLogin(login);
     else db.insertLogin(login);
   });
-  clearFailures(account.email);
-  notify.passwordChanged(account, username, !existing, db.settings());
+  clearFailures(owner.email);
+  notify.passwordChanged(owner, username, !existing, db.settings());
   return createSession(login, now);
+}
+
+const USERNAME_TAKEN = 'That username is taken. Please choose another.';
+const INVALID_CODE = 'That code is incorrect or has expired. Please request a new one.';
+
+/** What a sign-up code holds until it is used: the chosen username and the password's hash (never the password). */
+interface SignUpData {
+  username: string;
+  passwordHash: string;
 }
 
 export const handlers: { [A in Action]: Handler<A> } = {
@@ -172,21 +188,22 @@ export const handlers: { [A in Action]: Handler<A> } = {
       verifyPassword(password, DUMMY_HASH);
       throw new ApiError(INCORRECT_LOGIN);
     }
-    checkNotLockedOut(account.user.email);
+    const { email } = account.owner;
+    checkNotLockedOut(email);
     if (!verifyPassword(password, account.login.passwordHash)) {
-      recordFailure(account.user.email);
+      recordFailure(email);
       throw new ApiError(INCORRECT_LOGIN);
     }
-    clearFailures(account.user.email);
+    clearFailures(email);
     return { token: createSession(account.login, ctx.now) };
   },
 
   requestPasswordReset(ctx, payload) {
     const account = findAccount(text(payload, 'login', 254, true));
     // Same answer either way, so this can't be used to find out who has an account.
-    if (account) {
-      const code = issueResetCode(account.user.email, ctx.now);
-      if (code) notify.passwordResetCode(account.user, code, db.settings());
+    if (account && !codeRecentlySent('reset', account.owner.email, ctx.now)) {
+      const code = issueCode('reset', account.owner.email, ctx.now, null);
+      notify.passwordResetCode(account.owner, code, db.settings());
     }
     return { sent: true as const };
   },
@@ -196,18 +213,65 @@ export const handlers: { [A in Action]: Handler<A> } = {
     const code = text(payload, 'code', 20, true);
     const newPassword = text(payload, 'newPassword', PASSWORD_MAX, true);
     const account = findAccount(loginName);
-    const invalid = new ApiError('That code is incorrect or has expired. Please request a new one.');
     // Before using up the code, so a too-short password doesn't cost the student their code.
-    fail(passwordErrors(newPassword, { username: account?.login.username ?? '', email: account?.user.email ?? '' }));
-    if (!account) throw invalid;
-    const { login, user: owner } = account;
+    fail(passwordErrors(newPassword, { username: account?.login.username ?? '', email: account?.owner.email ?? '' }));
+    if (!account) throw new ApiError(INVALID_CODE);
+    const { login, owner } = account;
     // Wrong codes share the sign-in attempt limit, so codes can't be guessed by re-requesting them.
-    checkNotLockedOut(account.user.email);
-    if (!consumeResetCode(account.user.email, code, ctx.now)) {
-      recordFailure(account.user.email);
-      throw invalid;
+    checkNotLockedOut(owner.email);
+    if (!consumeCode('reset', owner.email, code, ctx.now)) {
+      recordFailure(owner.email);
+      throw new ApiError(INVALID_CODE);
     }
     return { token: savePassword(owner, login.username, newPassword, login, ctx.now) };
+  },
+
+  requestSignUp(ctx, payload) {
+    const email = text(payload, 'email', 254, true).trim().toLowerCase();
+    const username = normalizeUsername(text(payload, 'username', USERNAME_MAX + 10, true));
+    const password = text(payload, 'password', PASSWORD_MAX, true);
+    fail([
+      ...(isEmail(email) ? [] : ['Enter a valid email address.']),
+      ...usernameErrors(username),
+      ...passwordErrors(password, { username, email }),
+    ]);
+    const logins = db.logins();
+    if (logins.some((l) => l.username === username && l.email !== email)) throw new ApiError(USERNAME_TAKEN);
+    if (codeRecentlySent('signup', email, ctx.now)) return { sent: true as const };
+
+    // Same answer whether or not the email has an account; the owner is told by email instead.
+    const settings = db.settings();
+    if (logins.some((l) => l.email === email) || db.users().some((u) => u.email === email)) {
+      issueCode('signup', email, ctx.now, null);
+      notify.alreadyRegistered(email, settings);
+    } else {
+      const data: SignUpData = { username, passwordHash: hashPassword(password) };
+      notify.signUpCode(email, issueCode('signup', email, ctx.now, data), settings);
+    }
+    return { sent: true as const };
+  },
+
+  completeSignUp(ctx, payload) {
+    const email = text(payload, 'email', 254, true).trim().toLowerCase();
+    const code = text(payload, 'code', 20, true);
+    checkNotLockedOut(email);
+    const used = consumeCode<SignUpData | null>('signup', email, code, ctx.now);
+    if (!used?.data) {
+      recordFailure(email);
+      throw new ApiError(INVALID_CODE);
+    }
+    const login: Login = { email, ...used.data, updatedAt: ctx.now.toISOString() };
+    withLock(() => {
+      const logins = db.logins();
+      if (logins.some((l) => l.email === email))
+        throw new ApiError('This email already has an account. Please sign in.');
+      if (logins.some((l) => l.username === login.username)) {
+        throw new ApiError('Someone just took that username. Please sign up again with another one.');
+      }
+      db.insertLogin(login);
+    });
+    clearFailures(email);
+    return { token: createSession(login, ctx.now) };
   },
 
   me(ctx) {

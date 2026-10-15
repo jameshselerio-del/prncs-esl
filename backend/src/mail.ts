@@ -10,6 +10,11 @@ function when(b: Booking, timeZone: string): string {
   return `${start} – ${end} (${timeZone})`;
 }
 
+/** Who an account email goes to; `name` is empty before a password sign-up completes the profile. */
+type Recipient = Pick<User, 'email' | 'name'>;
+
+const greeting = (r: Recipient): string => (r.name ? `Hi ${r.name},` : 'Hi,');
+
 function send(
   to: string,
   subject: string,
@@ -148,12 +153,12 @@ export const notify = {
     );
   },
 
-  passwordResetCode(user: User, code: string, settings: Settings): void {
+  passwordResetCode(user: Recipient, code: string, settings: Settings): void {
     send(
       user.email,
       'Your password reset code',
       [
-        `Hi ${user.name},`,
+        greeting(user),
         '',
         `Your code to reset your password is ${code}. It expires in 15 minutes.`,
         "If you didn't ask to reset your password, you can ignore this email.",
@@ -163,17 +168,47 @@ export const notify = {
   },
 
   /** Sent whenever a password is set, changed or reset, so an unexpected change gets noticed. */
-  passwordChanged(user: User, username: string, firstTime: boolean, settings: Settings): void {
+  passwordChanged(user: Recipient, username: string, firstTime: boolean, settings: Settings): void {
     send(
       user.email,
       firstTime ? 'Password sign-in turned on' : 'Your password was changed',
       [
-        `Hi ${user.name},`,
+        greeting(user),
         '',
         firstTime
           ? `You can now sign in with the username "${username}" and your password, as well as with Google.`
           : `The password for your username "${username}" was just changed.`,
         "If this wasn't you, sign in with Google, set a new password on your Profile page, and tell your teacher.",
+      ],
+      settings,
+    );
+  },
+
+  signUpCode(email: string, code: string, settings: Settings): void {
+    send(
+      email,
+      'Confirm your email',
+      [
+        'Hi,',
+        '',
+        `Your code to finish creating your account is ${code}. It expires in 15 minutes.`,
+        "If you didn't sign up, you can ignore this email.",
+      ],
+      settings,
+    );
+  },
+
+  /** Someone tried to sign up with an address that already has an account; tell the owner, not the visitor. */
+  alreadyRegistered(email: string, settings: Settings): void {
+    send(
+      email,
+      'You already have an account',
+      [
+        'Hi,',
+        '',
+        'Someone (probably you) tried to create a new account with this email address, but it already has one.',
+        'Sign in with Google, or use "Forgot password?" on the sign-in page if you set a password.',
+        "If this wasn't you, you can ignore this email.",
       ],
       settings,
     );

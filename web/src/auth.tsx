@@ -125,7 +125,6 @@ function SignIn({ onSignIn, notice }: { onSignIn: (token: string) => void; notic
       {error && <p className="error">{error}</p>}
       <OrDivider />
       <PasswordSignIn onSignIn={onSignIn} />
-      <p className="hint">New here? Sign up with Google, then add a username and password on your Profile page.</p>
     </SignInLayout>
   );
 }

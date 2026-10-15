@@ -136,6 +136,9 @@ export function bookingDetailsErrors(d: BookingDetails): string[] {
   return errors;
 }
 
+/** A plausible email address (the emailed sign-up code proves it is real). */
+export const isEmail = (v: string): boolean => v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
 export const USERNAME_MIN = 3;
 export const USERNAME_MAX = 30;
 export const PASSWORD_MIN = 8;
