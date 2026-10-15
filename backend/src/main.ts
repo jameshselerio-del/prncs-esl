@@ -6,6 +6,7 @@ import { handlers, sendReminders } from './handlers';
 
 import { ensureDatabase } from './setup';
 
+export { seedDemoData } from './demo';
 export { installTriggers, setupDatabase } from './setup';
 export { sendReminders };
 

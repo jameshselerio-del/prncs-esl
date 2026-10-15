@@ -46,7 +46,8 @@ export function setupDatabase(): void {
   const props = PropertiesService.getScriptProperties();
   let id = props.getProperty('SPREADSHEET_ID');
   if (!id) {
-    id = SpreadsheetApp.create('ESL Class Booking — Database').getId();
+    const env = props.getProperty('ENVIRONMENT');
+    id = SpreadsheetApp.create(`ESL Class Booking — Database${env ? ` (${env})` : ''}`).getId();
     setConfig('SPREADSHEET_ID', id);
   }
   const ss = SpreadsheetApp.openById(id);

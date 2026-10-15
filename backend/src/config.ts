@@ -1,6 +1,14 @@
 import { ApiError } from './errors';
 
-export type ConfigKey = 'SPREADSHEET_ID' | 'GOOGLE_CLIENT_ID' | 'APP_URL' | 'SCHEMA_VERSION';
+export type ConfigKey =
+  | 'SPREADSHEET_ID'
+  | 'GOOGLE_CLIENT_ID'
+  | 'APP_URL'
+  | 'SCHEMA_VERSION'
+  /** "staging" on the staging script; unset in production. */
+  | 'ENVIRONMENT'
+  /** Staging only: the Google account seedDemoData makes the teacher. */
+  | 'ADMIN_EMAIL';
 
 /** Values live in Apps Script → Project Settings → Script properties. */
 export function getConfig(key: ConfigKey): string {
