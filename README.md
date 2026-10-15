@@ -72,12 +72,14 @@ deactivation, leave-tracking migration) as part of `npm test`.
 2. `npm run backend:push`.
 3. In the Apps Script editor → **Project Settings → Script properties**, add:
    - `GOOGLE_CLIENT_ID` — same value as `VITE_GOOGLE_CLIENT_ID`
-   - `APP_URL` — the GitHub Pages URL used in emails,
+   - `APP_URL` (optional) — link used in emails; defaults to
      `https://jameshselerio-del.github.io/prncs-esl/`
-4. Run `setupDatabase` (creates the database Sheet in your Drive and saves
-   `SPREADSHEET_ID`; on an existing leave-tracking Sheet it converts the Users
-   tab and renames the old leave tabs to `old_…`). Then run `installTriggers`
-   (hourly class-reminder emails). Both are safe to re-run.
+4. Run `setupDatabase` once to approve the script's permissions. It creates the
+   database Sheet in your Drive and saves `SPREADSHEET_ID` (on an existing
+   leave-tracking Sheet it converts the Users tab and renames the old leave tabs
+   to `old_…`). After that the backend keeps itself set up: the first request
+   after a deploy upgrades the Sheet if needed and installs the hourly reminder
+   trigger (`installTriggers` does the same by hand). Both are safe to re-run.
 5. **Deploy → New deployment → Web app**, execute as _Me_, access _Anyone_.
    Put the `/exec` URL in `.env.local` as `VITE_API_URL`.
 6. Make the teacher an admin: a row in the `Users` tab with role `ADMIN`, e.g.
@@ -110,7 +112,8 @@ One-time setup, in the [staging Apps Script editor](https://script.google.com/d/
    accounts and register as students.
 
 Release a branch to staging with `npm run backend:deploy:staging`; it doesn't
-affect production. `installTriggers` is optional on staging (reminders).
+affect production. Reminders are installed automatically there too; demo
+students are never emailed.
 
 ### 4. GitHub Pages
 
