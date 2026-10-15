@@ -4,7 +4,7 @@ import type { MeResult } from '../../shared/api';
 import { useApi, useQuery } from './api';
 import { APP_NAME, useAuth } from './auth';
 import { ErrorText } from './components/Bits';
-import { PrivacyLink } from './components/PrivacyLink';
+import { LegalLinks, PrivacyLink, TermsLink } from './components/LegalLinks';
 import { ProfileForm } from './components/ProfileForm';
 import { Profile } from './pages/Profile';
 import { Book } from './pages/student/Book';
@@ -95,7 +95,7 @@ export function App() {
           </Routes>
         </main>
         <footer className="footer">
-          <PrivacyLink />
+          <LegalLinks />
         </footer>
       </HashRouter>
     </SessionContext.Provider>
@@ -132,7 +132,7 @@ function Register({ me, onDone }: { me: Extract<MeResult, { registered: false }>
         </button>
       </p>
       <p className="hint">
-        How we use your information: <PrivacyLink />
+        By creating an account you agree to the <TermsLink /> and <PrivacyLink />.
       </p>
     </main>
   );

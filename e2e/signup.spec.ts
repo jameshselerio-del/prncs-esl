@@ -27,10 +27,17 @@ test('signing out returns to the sign-in screen', async ({ page }) => {
   await expect(page.getByRole('button', { name: /Yuki Tanaka/ })).toBeVisible();
 });
 
-test('the privacy policy is linked from sign-in and loads', async ({ page }) => {
+test('the terms and privacy policy are linked from sign-in and load', async ({ page }) => {
   await page.goto('/');
+  const termsPopup = page.waitForEvent('popup');
+  await page.getByRole('link', { name: 'Terms of Service' }).click();
+  const terms = await termsPopup;
+  await expect(terms.getByRole('heading', { name: 'Terms of Service' })).toBeVisible();
+  await expect(terms.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', 'privacy.html');
+  await terms.close();
+
   const popup = page.waitForEvent('popup');
-  await page.getByRole('link', { name: 'Privacy policy' }).click();
+  await page.getByRole('link', { name: 'Privacy Policy' }).click();
   const policy = await popup;
   await expect(policy.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible();
   await expect(policy.getByRole('link', { name: 'jamesh.selerio@gmail.com' })).toHaveAttribute(
