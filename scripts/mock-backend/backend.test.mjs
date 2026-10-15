@@ -150,7 +150,9 @@ describe('booking', () => {
     const booking = ok(yuki, 'book', { start: slot.start, topic: 'Travel', studentNote: 'Hi!' });
     expect(booking).toMatchObject({ studentEmail: 'yuki@example.com', status: 'CONFIRMED', topic: 'Travel' });
     expect(booking).not.toHaveProperty('privateNote');
-    expect(mailTo('yuki@example.com').map((m) => m.subject)).toEqual(['[ESL Classes (mock)] Your class is booked']);
+    expect(mailTo('yuki@example.com').map((m) => m.subject)).toEqual([
+      '[Komorebi English (mock)] Your class is booked',
+    ]);
     expect(mailTo(TEACHER.email)[0].body).toContain('Yuki Tanaka');
     expect(ok(yuki, 'availability').some((s) => s.start === slot.start)).toBe(false);
     expect(ok(teacher, 'allBookings').find((b) => b.id === booking.id)).toMatchObject({ studentName: 'Yuki Tanaka' });
@@ -236,7 +238,7 @@ describe('teacher books for a student', () => {
       status: 'CONFIRMED',
     });
     expect(mailTo('yuki@example.com').map((m) => m.subject)).toEqual([
-      '[ESL Classes (mock)] Your teacher booked a class for you',
+      '[Komorebi English (mock)] Your teacher booked a class for you',
     ]);
     expect(mailTo(TEACHER.email)).toEqual([]);
     expect(ok(yuki, 'myBookings').some((b) => b.id === res.data.id)).toBe(true);
@@ -278,7 +280,7 @@ describe('cancelling', () => {
     const cancelled = ok(teacher, 'cancelBooking', { id: minhNext.id, reason: 'Power outage' });
     expect(cancelled).toMatchObject({ status: 'CANCELLED', cancelledBy: TEACHER.email });
     expect(mailTo('minh@example.com').at(-1)).toMatchObject({
-      subject: '[ESL Classes (mock)] Your class was cancelled',
+      subject: '[Komorebi English (mock)] Your class was cancelled',
     });
     expect(mailTo('minh@example.com').at(-1).body).toContain('Reason: Power outage');
 
@@ -398,7 +400,7 @@ describe('seedDemoData (staging)', () => {
     expect(me).toMatchObject({
       registered: true,
       user: { role: 'ADMIN' },
-      settings: { schoolName: 'ESL Classes (staging)' },
+      settings: { schoolName: 'Komorebi English (staging)' },
     });
     const bookings = ok(owner, 'allBookings');
     expect(bookings).toHaveLength(4);

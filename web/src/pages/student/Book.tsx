@@ -5,6 +5,7 @@ import { useApi, useQuery } from '../../api';
 import { ErrorText } from '../../components/Bits';
 import { Modal } from '../../components/Modal';
 import { useSession } from '../../session';
+import { Bilingual } from '../../brand';
 import { fmtDayHeading, fmtRange, fmtTime, localDateKey } from '../../time';
 
 export function Book() {
@@ -51,7 +52,12 @@ export function Book() {
 
   return (
     <>
-      <h2>Book a class</h2>
+      <h2>
+        Book a class{' '}
+        <span className="hint ja" lang="ja">
+          レッスン予約
+        </span>
+      </h2>
       <p className="hint">
         Classes are {settings.lessonMinutes} minutes. Times are shown in {user.timeZone}. You can cancel up to{' '}
         {settings.cancelNoticeHours} hours before a class.
@@ -127,7 +133,7 @@ export function Book() {
             <ErrorText error={error} />
             <div className="actions">
               <button type="submit" className="primary" disabled={busy}>
-                {busy ? 'Booking…' : 'Book class'}
+                {busy ? 'Booking…' : <Bilingual en="Book class" ja="予約確定" />}
               </button>
               <button type="button" onClick={() => setChosen(null)}>
                 Back

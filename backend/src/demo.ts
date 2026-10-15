@@ -86,7 +86,7 @@ export function seedDemoData(): void {
       { id: Utilities.getUuid(), weekday, start: '14:00', end: '18:00' },
     ]),
   );
-  db.saveSettings({ ...db.settings(), schoolName: 'ESL Classes (staging)' });
+  db.saveSettings({ ...db.settings(), schoolName: 'Komorebi English (staging)' });
 
   const lessons: Lesson[] = [
     {
