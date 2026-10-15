@@ -13,5 +13,5 @@
     "skipLibCheck": true,
     "types": ["vite/client"]
   },
-  "include": ["web/src", "shared", "vite.config.ts"]
+  "include": ["web/src", "shared", "vite.config.ts", "e2e", "playwright.config.ts"]
 }

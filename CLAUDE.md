@@ -39,3 +39,6 @@ Read `docs/requirements.md` and `docs/architecture.md` before changing behaviour
 
 - Work is tracked in GitHub Issues; branch per issue, PR into `main`.
 - Run `npm run check` before opening a PR (CI runs the same plus `format:check`).
+- UI changes: add or update a Playwright spec in `e2e/` and run `npm run test:e2e`
+  (it starts its own mock backend and Vite on ports 8790 / 5180). Tests reset
+  the mock data in `beforeEach` and run serially.

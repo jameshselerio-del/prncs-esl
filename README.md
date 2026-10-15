@@ -15,16 +15,17 @@ cp .env.example .env.local   # fill in VITE_GOOGLE_CLIENT_ID and VITE_API_URL
 npm run dev                  # http://localhost:5173
 ```
 
-| Command                  | What it does                                          |
-| ------------------------ | ----------------------------------------------------- |
-| `npm run dev`            | Start the SPA dev server                              |
-| `npm run dev:mock`       | SPA + local mock API, no Google sign-in (see below)   |
-| `npm run mock-api`       | Only the mock API, on http://localhost:8787           |
-| `npm test`               | Unit tests for `shared/` + backend end-to-end tests   |
-| `npm run check`          | Lint, typecheck, test and build — run before PRs      |
-| `npm run build`          | Build SPA to `dist/web` and backend to `dist/backend` |
-| `npm run backend:push`   | Bundle backend and push it to Apps Script with clasp  |
-| `npm run backend:deploy` | Push, then release it on the production `/exec` URL   |
+| Command                  | What it does                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------ |
+| `npm run dev`            | Start the SPA dev server                                                                         |
+| `npm run dev:mock`       | SPA + local mock API, no Google sign-in (see below)                                              |
+| `npm run mock-api`       | Only the mock API, on http://localhost:8787                                                      |
+| `npm test`               | Unit tests for `shared/` + backend end-to-end tests                                              |
+| `npm run test:e2e`       | Playwright browser tests against the mock backend (first run: `npx playwright install chromium`) |
+| `npm run check`          | Lint, typecheck, test and build — run before PRs                                                 |
+| `npm run build`          | Build SPA to `dist/web` and backend to `dist/backend`                                            |
+| `npm run backend:push`   | Bundle backend and push it to Apps Script with clasp                                             |
+| `npm run backend:deploy` | Push, then release it on the production `/exec` URL                                              |
 
 ### Without Google: the mock API
 
