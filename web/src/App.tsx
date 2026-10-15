@@ -47,6 +47,7 @@ export function App() {
   const session: Session = {
     user: me.data.user,
     settings: me.data.settings,
+    username: me.data.username,
     now,
     refresh: me.reload,
   };

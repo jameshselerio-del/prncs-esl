@@ -5,9 +5,11 @@ import {
   bookingDetailsErrors,
   isTimeZone,
   lessonErrors,
+  passwordErrors,
   profileErrors,
   settingsErrors,
   timeOffErrors,
+  usernameErrors,
 } from './validation';
 
 describe('profileErrors', () => {
@@ -85,5 +87,32 @@ describe('lesson and booking details', () => {
     };
     expect(bookingDetailsErrors(details)).toEqual([]);
     expect(bookingDetailsErrors({ ...details, meetingLink: 'javascript:alert(1)' })).toHaveLength(1);
+  });
+});
+
+describe('usernameErrors', () => {
+  it('accepts simple names, case-insensitively', () => {
+    expect(usernameErrors('Yuki.T')).toEqual([]);
+    expect(usernameErrors('minh_2026')).toEqual([]);
+  });
+  it('rejects short, long and odd names', () => {
+    expect(usernameErrors('ab')).toHaveLength(1);
+    expect(usernameErrors('a'.repeat(31))).toHaveLength(1);
+    expect(usernameErrors('yuki@example.com')).toHaveLength(1);
+    expect(usernameErrors('.yuki')).toHaveLength(1);
+    expect(usernameErrors('yu ki')).toHaveLength(1);
+  });
+});
+
+describe('passwordErrors', () => {
+  const account = { username: 'yuki', email: 'yuki@example.com' };
+  it('accepts a long enough password', () => {
+    expect(passwordErrors('green tea 123', account)).toEqual([]);
+  });
+  it('rejects short, blank and guessable passwords', () => {
+    expect(passwordErrors('short', account)).toHaveLength(1);
+    expect(passwordErrors('        ', account)).toHaveLength(1);
+    expect(passwordErrors('YUKI@example.com', account)).toHaveLength(1);
+    expect(passwordErrors('x'.repeat(129), account)).toHaveLength(1);
   });
 });

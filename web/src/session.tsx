@@ -4,6 +4,8 @@ import type { Settings, User } from '../../shared/types';
 export interface Session {
   user: User;
   settings: Settings;
+  /** Username for password sign-in, or null if the user hasn't set one. */
+  username: string | null;
   /** Current time in ms, refreshed every 30 seconds so "upcoming" and countdowns stay current. */
   now: number;
   /** Re-fetch the signed-in user and settings (after a profile or settings change). */

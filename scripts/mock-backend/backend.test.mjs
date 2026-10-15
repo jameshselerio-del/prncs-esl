@@ -443,3 +443,124 @@ describe('launch automation', () => {
     expect(mailTo('minh@example.com').at(-1).body).not.toContain('github.io');
   });
 });
+
+describe('password sign-in', () => {
+  const signedOut = (action, payload) => backend.call('', action, payload);
+  const setYukiPassword = () =>
+    ok(yuki, 'setPassword', { username: 'Yuki.T', currentPassword: '', newPassword: 'green tea 123' });
+
+  it('lets a registered user add a username and password, then sign in with either name', () => {
+    expect(ok(yuki, 'me').username).toBeNull();
+    const { token, username } = setYukiPassword();
+    expect(username).toBe('yuki.t');
+    expect(token.startsWith('pw.')).toBe(true);
+    expect(ok(token, 'me')).toMatchObject({ registered: true, user: { email: 'yuki@example.com' }, username });
+    expect(mailTo('yuki@example.com').at(-1).subject).toContain('Password sign-in turned on');
+
+    // The hash is stored apart from Users and is never the password itself.
+    const [row] = backend.sheet('Logins').records();
+    expect(row).toMatchObject({ email: 'yuki@example.com', username: 'yuki.t' });
+    expect(row.passwordHash).toMatch(/^pbkdf2-sha256\$10000\$[0-9a-f]{32}\$[0-9a-f]{64}$/);
+    expect(JSON.stringify(ok(teacher, 'students'))).not.toContain('pbkdf2');
+
+    for (const login of ['YUKI.T', 'yuki@example.com']) {
+      const signedIn = signedOut('signInWithPassword', { login, password: 'green tea 123' });
+      expect(signedIn.ok).toBe(true);
+      expect(ok(signedIn.data.token, 'myBookings').length).toBeGreaterThan(0);
+    }
+  });
+
+  it('gives one message for unknown users and wrong passwords, and locks after five failures', () => {
+    setYukiPassword();
+    const unknown = signedOut('signInWithPassword', { login: 'nobody', password: 'whatever123' });
+    const wrong = signedOut('signInWithPassword', { login: 'yuki.t', password: 'wrong password' });
+    expect(unknown.error).toBe(wrong.error);
+    for (let i = 0; i < 4; i++) signedOut('signInWithPassword', { login: 'yuki.t', password: 'wrong password' });
+    const locked = signedOut('signInWithPassword', { login: 'yuki.t', password: 'green tea 123' });
+    expect(locked.error).toContain('Too many');
+    backend.clock.advance(16 * 60_000);
+    expect(signedOut('signInWithPassword', { login: 'yuki.t', password: 'green tea 123' }).ok).toBe(true);
+  });
+
+  it('requires the current password to change it, and ends older sessions', () => {
+    const { token: first } = setYukiPassword();
+    const res = err(yuki, 'setPassword', {
+      username: 'yuki.t',
+      currentPassword: 'nope',
+      newPassword: 'matcha latte 9',
+    });
+    expect(res.error).toContain('current password');
+    const { token: second } = ok(first, 'setPassword', {
+      username: 'yuki.t',
+      currentPassword: 'green tea 123',
+      newPassword: 'matcha latte 9',
+    });
+    expect(err(first, 'me').code).toBe('AUTH');
+    expect(ok(second, 'me').registered).toBe(true);
+    expect(mailTo('yuki@example.com').at(-1).subject).toContain('Your password was changed');
+    expect(signedOut('signInWithPassword', { login: 'yuki.t', password: 'green tea 123' }).ok).toBe(false);
+  });
+
+  it('rejects taken usernames, weak passwords and unregistered users', () => {
+    setYukiPassword();
+    expect(
+      err(minh, 'setPassword', { username: 'yuki.t', currentPassword: '', newPassword: 'pho bo 12345' }).error,
+    ).toContain('taken');
+    expect(err(minh, 'setPassword', { username: 'minh', currentPassword: '', newPassword: 'short' }).error).toContain(
+      'at least 8',
+    );
+    expect(
+      err(minh, 'setPassword', { username: 'a@b', currentPassword: '', newPassword: 'pho bo 12345' }).error,
+    ).toContain('Username');
+    const newcomer = mockToken('new.student@example.com', 'Nora');
+    expect(
+      err(newcomer, 'setPassword', { username: 'nora', currentPassword: '', newPassword: 'pho bo 12345' }).error,
+    ).toContain('profile');
+  });
+
+  it('expires sessions, rejects tampered ones and signs out deactivated students', () => {
+    const { token } = setYukiPassword();
+    const tampered = token.replace(/.$/, (c) => (c === '0' ? '1' : '0'));
+    expect(err(tampered, 'me').code).toBe('AUTH');
+    ok(teacher, 'setStudentActive', { email: 'yuki@example.com', active: false });
+    expect(err(token, 'me').code).toBe('AUTH');
+    expect(signedOut('signInWithPassword', { login: 'yuki.t', password: 'green tea 123' }).ok).toBe(false);
+    ok(teacher, 'setStudentActive', { email: 'yuki@example.com', active: true });
+    expect(ok(token, 'me').registered).toBe(true);
+    backend.clock.advance(13 * HOUR);
+    expect(err(token, 'me').code).toBe('AUTH');
+  });
+
+  it('resets a forgotten password with an emailed code', () => {
+    setYukiPassword();
+    // Same answer for unknown accounts, and no email.
+    const before = backend.state.mail.length;
+    expect(signedOut('requestPasswordReset', { login: 'nobody' })).toEqual({ ok: true, data: { sent: true } });
+    expect(backend.state.mail.length).toBe(before);
+
+    expect(signedOut('requestPasswordReset', { login: 'yuki.t' }).ok).toBe(true);
+    const email = mailTo('yuki@example.com').at(-1);
+    expect(email.subject).toContain('reset code');
+    const code = /code to reset your password is (\d{6})/.exec(email.body)[1];
+
+    // A second request within a minute sends nothing new.
+    signedOut('requestPasswordReset', { login: 'yuki@example.com' });
+    expect(mailTo('yuki@example.com').at(-1)).toBe(email);
+
+    const wrong = code === '000000' ? '111111' : '000000';
+    expect(signedOut('resetPassword', { login: 'yuki.t', code: wrong, newPassword: 'hojicha 2026' }).ok).toBe(false);
+    // A weak password is refused without using up the code.
+    expect(signedOut('resetPassword', { login: 'yuki.t', code, newPassword: 'short' }).error).toContain('at least 8');
+    const reset = signedOut('resetPassword', { login: 'yuki.t', code, newPassword: 'hojicha 2026' });
+    expect(reset.ok).toBe(true);
+    expect(ok(reset.data.token, 'me').username).toBe('yuki.t');
+    expect(signedOut('signInWithPassword', { login: 'yuki.t', password: 'hojicha 2026' }).ok).toBe(true);
+    // Codes work once.
+    expect(signedOut('resetPassword', { login: 'yuki.t', code, newPassword: 'another one 1' }).ok).toBe(false);
+  });
+
+  it('lets Google-only accounts be found by email but never reset', () => {
+    expect(signedOut('requestPasswordReset', { login: 'minh@example.com' }).ok).toBe(true);
+    expect(mailTo('minh@example.com')).toEqual([]);
+  });
+});

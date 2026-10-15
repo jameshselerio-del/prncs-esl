@@ -1,5 +1,6 @@
 import type { Profile as ProfileFields } from '../../../shared/types';
 import { useApi } from '../api';
+import { PasswordSettings } from '../components/PasswordSettings';
 import { ProfileForm } from '../components/ProfileForm';
 import { useSession } from '../session';
 
@@ -28,6 +29,7 @@ export function Profile() {
           refresh();
         }}
       />
+      <PasswordSettings />
     </>
   );
 }

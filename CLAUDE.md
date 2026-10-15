@@ -18,6 +18,8 @@ Read `docs/requirements.md` and `docs/architecture.md` before changing behaviour
   device zone directly.
 - **Never send `privateNote` to students** — student-facing handlers return
   `studentView(booking)`.
+- **Never return `Logins` rows** (password hashes) from a handler. Password
+  hashing, sessions and reset codes live in `backend/src/passwords.ts`.
 - Teacher-only actions are listed in `ADMIN_ACTIONS` (`shared/api.ts`) and
   enforced in `backend/src/main.ts`.
 - Sheet columns are defined once in `SCHEMA` (`backend/src/db.ts`); add columns

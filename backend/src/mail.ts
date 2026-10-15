@@ -147,4 +147,35 @@ export const notify = {
       settings,
     );
   },
+
+  passwordResetCode(user: User, code: string, settings: Settings): void {
+    send(
+      user.email,
+      'Your password reset code',
+      [
+        `Hi ${user.name},`,
+        '',
+        `Your code to reset your password is ${code}. It expires in 15 minutes.`,
+        "If you didn't ask to reset your password, you can ignore this email.",
+      ],
+      settings,
+    );
+  },
+
+  /** Sent whenever a password is set, changed or reset, so an unexpected change gets noticed. */
+  passwordChanged(user: User, username: string, firstTime: boolean, settings: Settings): void {
+    send(
+      user.email,
+      firstTime ? 'Password sign-in turned on' : 'Your password was changed',
+      [
+        `Hi ${user.name},`,
+        '',
+        firstTime
+          ? `You can now sign in with the username "${username}" and your password, as well as with Google.`
+          : `The password for your username "${username}" was just changed.`,
+        "If this wasn't you, sign in with Google, set a new password on your Profile page, and tell your teacher.",
+      ],
+      settings,
+    );
+  },
 };

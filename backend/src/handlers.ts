@@ -14,14 +14,29 @@ import {
   availabilityErrors,
   bookingDetailsErrors,
   lessonErrors,
+  normalizeUsername,
+  PASSWORD_MAX,
+  passwordErrors,
   profileErrors,
   settingsErrors,
   timeOffErrors,
+  USERNAME_MAX,
+  usernameErrors,
 } from '../../shared/validation';
 import type { Identity } from './auth';
-import { db } from './db';
+import { db, type Login } from './db';
 import { ApiError } from './errors';
 import { notify } from './mail';
+import {
+  checkNotLockedOut,
+  clearFailures,
+  consumeResetCode,
+  createSession,
+  hashPassword,
+  issueResetCode,
+  recordFailure,
+  verifyPassword,
+} from './passwords';
 
 export interface Context {
   /** Null for a Google user who has not registered yet (only `me` and `register` allow that). */
@@ -116,12 +131,93 @@ function findBooking(id: string): Booking {
 
 type Handler<A extends Action> = (ctx: Context, payload: Payload) => Api[A][1];
 
+const INCORRECT_LOGIN = 'Incorrect username or password.';
+const DUMMY_HASH = `pbkdf2-sha256$10000$${'0'.repeat(32)}$${'0'.repeat(64)}`;
+
+/** The login and its active user for a username or email, or null. */
+function findAccount(loginName: string): { login: Login; user: User } | null {
+  const key = loginName.trim().toLowerCase();
+  if (!key) return null;
+  const login = db.logins().find((l) => (key.includes('@') ? l.email === key : l.username === key));
+  const found = login && db.users().find((u) => u.email === login.email);
+  return login && found?.active ? { login, user: found } : null;
+}
+
+/** Stores a new password and returns a session for it; older sessions stop working. */
+function savePassword(account: User, username: string, password: string, existing: Login | undefined, now: Date) {
+  const login: Login = {
+    email: account.email,
+    username,
+    passwordHash: hashPassword(password),
+    updatedAt: now.toISOString(),
+  };
+  withLock(() => {
+    const taken = db.logins().some((l) => l.username === username && l.email !== account.email);
+    if (taken) throw new ApiError('That username is taken. Please choose another.');
+    if (db.logins().some((l) => l.email === account.email)) db.updateLogin(login);
+    else db.insertLogin(login);
+  });
+  clearFailures(account.email);
+  notify.passwordChanged(account, username, !existing, db.settings());
+  return createSession(login, now);
+}
+
 export const handlers: { [A in Action]: Handler<A> } = {
+  signInWithPassword(ctx, payload) {
+    const loginName = text(payload, 'login', 254, true);
+    const password = text(payload, 'password', PASSWORD_MAX, true);
+    const account = findAccount(loginName);
+    if (!account) {
+      // Hash anyway so an unknown username takes as long as a wrong password.
+      verifyPassword(password, DUMMY_HASH);
+      throw new ApiError(INCORRECT_LOGIN);
+    }
+    checkNotLockedOut(account.user.email);
+    if (!verifyPassword(password, account.login.passwordHash)) {
+      recordFailure(account.user.email);
+      throw new ApiError(INCORRECT_LOGIN);
+    }
+    clearFailures(account.user.email);
+    return { token: createSession(account.login, ctx.now) };
+  },
+
+  requestPasswordReset(ctx, payload) {
+    const account = findAccount(text(payload, 'login', 254, true));
+    // Same answer either way, so this can't be used to find out who has an account.
+    if (account) {
+      const code = issueResetCode(account.user.email, ctx.now);
+      if (code) notify.passwordResetCode(account.user, code, db.settings());
+    }
+    return { sent: true as const };
+  },
+
+  resetPassword(ctx, payload) {
+    const loginName = text(payload, 'login', 254, true);
+    const code = text(payload, 'code', 20, true);
+    const newPassword = text(payload, 'newPassword', PASSWORD_MAX, true);
+    const account = findAccount(loginName);
+    const invalid = new ApiError('That code is incorrect or has expired. Please request a new one.');
+    // Before using up the code, so a too-short password doesn't cost the student their code.
+    fail(passwordErrors(newPassword, { username: account?.login.username ?? '', email: account?.user.email ?? '' }));
+    if (!account) throw invalid;
+    const { login, user: owner } = account;
+    // Wrong codes share the sign-in attempt limit, so codes can't be guessed by re-requesting them.
+    checkNotLockedOut(account.user.email);
+    if (!consumeResetCode(account.user.email, code, ctx.now)) {
+      recordFailure(account.user.email);
+      throw invalid;
+    }
+    return { token: savePassword(owner, login.username, newPassword, login, ctx.now) };
+  },
+
   me(ctx) {
     const settings = db.settings();
-    return ctx.me
-      ? { registered: true, user: ctx.me, settings }
-      : { registered: false, email: ctx.identity.email, suggestedName: ctx.identity.name, settings };
+    if (!ctx.me) {
+      return { registered: false, email: ctx.identity.email, suggestedName: ctx.identity.name, settings };
+    }
+    const email = ctx.me.email;
+    const username = db.logins().find((l) => l.email === email)?.username ?? null;
+    return { registered: true, user: ctx.me, settings, username };
   },
 
   register(ctx, payload) {
@@ -145,6 +241,24 @@ export const handlers: { [A in Action]: Handler<A> } = {
     const updated: User = { ...user(ctx), ...readProfile(payload) };
     withLock(() => db.updateUser(updated));
     return updated;
+  },
+
+  setPassword(ctx, payload) {
+    const me = user(ctx);
+    const username = normalizeUsername(text(payload, 'username', USERNAME_MAX + 10, true));
+    const currentPassword = text(payload, 'currentPassword', PASSWORD_MAX);
+    const newPassword = text(payload, 'newPassword', PASSWORD_MAX, true);
+    fail([...usernameErrors(username), ...passwordErrors(newPassword, { username, email: me.email })]);
+
+    const existing = db.logins().find((l) => l.email === me.email);
+    if (existing) {
+      checkNotLockedOut(me.email);
+      if (!verifyPassword(currentPassword, existing.passwordHash)) {
+        recordFailure(me.email);
+        throw new ApiError('Your current password is incorrect.');
+      }
+    }
+    return { token: savePassword(me, username, newPassword, existing, ctx.now), username };
   },
 
   lessons() {
