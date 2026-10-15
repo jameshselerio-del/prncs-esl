@@ -1,31 +1,37 @@
-import type { Action, Api, CreditSummary } from '../../shared/api';
-import { parseIsoDate } from '../../shared/dates';
+import type { Action, Api, StudentBooking, TeacherBooking } from '../../shared/api';
 import {
-  allowedLeaveTypes,
-  balanceFor,
-  canCancel,
-  canDecide,
-  CREDIT_TYPES,
-  LEAVE_TYPES,
-  reservedCredits,
-  validateNewRequest,
-} from '../../shared/policy';
-import type { IsoDate, LeaveRequest, LeaveType, Office, User } from '../../shared/types';
-import { planUserImport } from '../../shared/userImport';
-import { USER_COLUMNS, userFromRecord, validateDirectory } from '../../shared/users';
+  canRecordOutcome,
+  canStudentCancel,
+  canTeacherCancel,
+  checkNewBooking,
+  generateSlots,
+  type ScheduleContext,
+} from '../../shared/slots';
+import { HOUR_MS } from '../../shared/time';
+import type { AvailabilityRule, Booking, Level, Profile, Settings, User, Weekday } from '../../shared/types';
+import {
+  availabilityErrors,
+  bookingDetailsErrors,
+  lessonErrors,
+  profileErrors,
+  settingsErrors,
+  timeOffErrors,
+} from '../../shared/validation';
+import type { Identity } from './auth';
 import { db } from './db';
 import { ApiError } from './errors';
 import { notify } from './mail';
 
-const TIME_ZONES: Record<Office, string> = { PH: 'Asia/Manila', JP: 'Asia/Tokyo' };
-
-function todayFor(user: User): IsoDate {
-  return Utilities.formatDate(new Date(), TIME_ZONES[user.office], 'yyyy-MM-dd');
+export interface Context {
+  /** Null for a Google user who has not registered yet (only `me` and `register` allow that). */
+  me: User | null;
+  identity: Identity;
+  now: Date;
 }
 
-const nowIso = (): string => new Date().toISOString();
+type Payload = Record<string, unknown>;
 
-/** Serializes writes so two requests can't spend the same credits. */
+/** Serializes writes so two students can't book the same slot. */
 function withLock<T>(fn: () => T): T {
   const lock = LockService.getScriptLock();
   lock.waitLock(20_000);
@@ -36,273 +42,365 @@ function withLock<T>(fn: () => T): T {
   }
 }
 
-function credits(email: string, year: number): CreditSummary {
-  const balance = balanceFor(db.ledger(), email, year);
-  const reserved = reservedCredits(db.requests(), email, year);
-  return { year, balance, reserved, available: balance - reserved };
+function user(ctx: Context): User {
+  if (!ctx.me) throw new ApiError('Please complete your profile first.');
+  return ctx.me;
 }
 
-function requireString(payload: Record<string, unknown>, field: string, maxLength = 500): string {
-  const value = payload[field];
-  if (typeof value !== 'string') throw new ApiError(`Missing ${field}.`);
+function text(payload: Payload, field: string, maxLength: number, required = false): string {
+  const value = payload[field] ?? '';
+  if (typeof value !== 'string') throw new ApiError(`Invalid ${field}.`);
   if (value.length > maxLength) throw new ApiError(`${field} is too long.`);
+  if (required && value.trim() === '') throw new ApiError(`Missing ${field}.`);
   return value;
 }
 
-function requireDate(payload: Record<string, unknown>, field: string): IsoDate {
-  const value = requireString(payload, field, 10);
-  try {
-    parseIsoDate(value);
-  } catch {
-    throw new ApiError(`Invalid ${field}.`);
-  }
+function int(payload: Payload, field: string): number {
+  const value = payload[field];
+  if (typeof value !== 'number' || !Number.isInteger(value)) throw new ApiError(`Invalid ${field}.`);
   return value;
 }
 
-function findRequest(id: string): LeaveRequest {
-  const request = db.requests().find((r) => r.id === id);
-  if (!request) throw new ApiError('Request not found.');
-  return request;
+function fail(errors: string[]): void {
+  if (errors.length) throw new ApiError(errors.join('\n'));
 }
 
-function findUser(email: string, users = db.users()): User {
-  const user = users.find((u) => u.email === email);
-  if (!user) throw new ApiError(`User not found: ${email}`);
-  return user;
+function readProfile(payload: Payload): Profile {
+  const profile: Profile = {
+    name: text(payload, 'name', 100).trim(),
+    timeZone: text(payload, 'timeZone', 64),
+    level: text(payload, 'level', 30) as Level | '',
+    nativeLanguage: text(payload, 'nativeLanguage', 60).trim(),
+    goals: text(payload, 'goals', 1000).trim(),
+    contact: text(payload, 'contact', 200).trim(),
+  };
+  fail(profileErrors(profile));
+  return profile;
 }
 
-function requireAdmin(me: User): void {
-  if (me.role !== 'ADMIN') throw new ApiError('Only HR/Admin can do this.');
+function readSettings(payload: unknown): Settings {
+  if (typeof payload !== 'object' || payload === null) throw new ApiError('Missing settings.');
+  const p = payload as Payload;
+  const settings: Settings = {
+    schoolName: text(p, 'schoolName', 100).trim(),
+    lessonMinutes: int(p, 'lessonMinutes'),
+    slotStepMinutes: int(p, 'slotStepMinutes'),
+    minNoticeHours: int(p, 'minNoticeHours'),
+    bookingWindowDays: int(p, 'bookingWindowDays'),
+    cancelNoticeHours: int(p, 'cancelNoticeHours'),
+    maxUpcomingPerStudent: int(p, 'maxUpcomingPerStudent'),
+    defaultMeetingLink: text(p, 'defaultMeetingLink', 500).trim(),
+  };
+  fail(settingsErrors(settings));
+  return settings;
 }
 
-/** Admins must not be able to remove their own admin access by accident. */
-function assertNoSelfLockout(me: User, updated: User): void {
-  if (updated.email === me.email && (updated.role !== 'ADMIN' || !updated.active)) {
-    throw new ApiError('You cannot remove your own admin role or deactivate yourself. Ask another admin.');
-  }
+const studentView = ({ privateNote, ...rest }: Booking): StudentBooking => rest;
+
+function teacherView(b: Booking, users: User[]): TeacherBooking {
+  return { ...b, studentName: users.find((u) => u.email === b.studentEmail)?.name ?? b.studentEmail };
 }
 
-/** Turns validateDirectory output into one readable error message. */
-function directoryError(errors: Map<string, string[]>): ApiError {
-  const lines = [...errors].map(([email, messages]) => `${email}: ${messages.join(' ')}`);
-  return new ApiError(lines.join('\n'));
+const teacherOf = (users: User[]): User | undefined => users.find((u) => u.role === 'ADMIN' && u.active);
+
+function scheduleContext(now: Date): ScheduleContext {
+  return { rules: db.rules(), timeOff: db.timeOff(), bookings: db.bookings(), settings: db.settings(), now };
 }
 
-type Handler<A extends Action> = (me: User, payload: Record<string, unknown>) => Api[A][1];
+function findBooking(id: string): Booking {
+  const booking = db.bookings().find((b) => b.id === id);
+  if (!booking) throw new ApiError('Booking not found.');
+  return booking;
+}
+
+type Handler<A extends Action> = (ctx: Context, payload: Payload) => Api[A][1];
 
 export const handlers: { [A in Action]: Handler<A> } = {
-  me(me) {
-    const today = todayFor(me);
-    const users = db.users();
-    return {
-      user: me,
-      today,
-      credits: credits(me.email, Number(today.slice(0, 4))),
-      allowedTypes: allowedLeaveTypes(me),
-      isApprover: me.role === 'ADMIN' || users.some((u) => u.managerEmail === me.email),
-    };
+  me(ctx) {
+    const settings = db.settings();
+    return ctx.me
+      ? { registered: true, user: ctx.me, settings }
+      : { registered: false, email: ctx.identity.email, suggestedName: ctx.identity.name, settings };
   },
 
-  myRequests(me) {
-    return db
-      .requests()
-      .filter((r) => r.email === me.email)
-      .sort((a, b) => b.startDate.localeCompare(a.startDate));
-  },
-
-  holidays(me) {
-    return db.holidays().filter((h) => h.office === me.office);
-  },
-
-  createRequest(me, payload) {
-    const type = requireString(payload, 'type', 20) as LeaveType;
-    if (!LEAVE_TYPES.includes(type)) throw new ApiError('Unknown leave type.');
-    const startDate = requireDate(payload, 'startDate');
-    const endDate = requireDate(payload, 'endDate');
-    const reason = requireString(payload, 'reason');
-
-    const request = withLock(() => {
-      const result = validateNewRequest({
-        user: me,
-        type,
-        startDate,
-        endDate,
-        today: todayFor(me),
-        holidays: db.holidays(),
-        existing: db.requests().filter((r) => r.email === me.email),
-        balance: credits(me.email, Number(startDate.slice(0, 4))).available,
-      });
-      if (!result.ok) throw new ApiError(result.errors.join(' '));
-
-      const created: LeaveRequest = {
-        id: Utilities.getUuid(),
-        email: me.email,
-        type,
-        startDate,
-        endDate,
-        days: result.days,
-        reason,
-        status: 'PENDING',
-        approverEmail: null,
-        decidedAt: null,
-        decisionNote: null,
-        createdAt: nowIso(),
+  register(ctx, payload) {
+    const profile = readProfile(payload);
+    return withLock(() => {
+      const existing = db.users().find((u) => u.email === ctx.identity.email);
+      if (existing) throw new ApiError('This account is already registered.');
+      const created: User = {
+        ...profile,
+        email: ctx.identity.email,
+        role: 'STUDENT',
+        active: true,
+        createdAt: ctx.now.toISOString(),
       };
-      db.insertRequest(created);
+      db.insertUser(created);
       return created;
     });
-
-    notify.filed(request, me, db.users());
-    return request;
   },
 
-  cancelRequest(me, payload) {
-    const id = requireString(payload, 'id', 64);
-    const cancelled = withLock(() => {
-      const request = findRequest(id);
-      if (request.email !== me.email) throw new ApiError('You can only cancel your own requests.');
-      if (!canCancel(request, todayFor(me))) throw new ApiError('This request can no longer be cancelled.');
-
-      if (request.status === 'APPROVED' && CREDIT_TYPES.has(request.type)) {
-        db.insertLedger({
-          id: Utilities.getUuid(),
-          email: me.email,
-          year: Number(request.startDate.slice(0, 4)),
-          delta: request.days,
-          kind: 'REFUND',
-          requestId: request.id,
-          note: 'Cancelled by employee',
-          createdBy: me.email,
-          createdAt: nowIso(),
-        });
-      }
-      db.updateRequest(id, { status: 'CANCELLED' });
-      return { ...request, status: 'CANCELLED' as const };
-    });
-
-    notify.cancelled(cancelled, me, db.users());
-    return cancelled;
+  updateProfile(ctx, payload) {
+    const updated: User = { ...user(ctx), ...readProfile(payload) };
+    withLock(() => db.updateUser(updated));
+    return updated;
   },
 
-  pendingApprovals(me) {
-    const users = db.users();
+  lessons() {
+    return db.lessons().sort((a, b) => a.title.localeCompare(b.title));
+  },
+
+  availability(ctx) {
+    user(ctx);
+    return generateSlots(scheduleContext(ctx.now));
+  },
+
+  myBookings(ctx) {
+    const me = user(ctx);
     return db
-      .requests()
-      .filter((r) => r.status === 'PENDING')
-      .flatMap((r) => {
-        const requester = users.find((u) => u.email === r.email);
-        return requester && canDecide(me, requester) ? [{ ...r, requesterName: requester.name }] : [];
-      })
-      .sort((a, b) => a.startDate.localeCompare(b.startDate));
+      .bookings()
+      .filter((b) => b.studentEmail === me.email)
+      .map(studentView);
   },
 
-  decideRequest(me, payload) {
-    const id = requireString(payload, 'id', 64);
-    const decision = requireString(payload, 'decision', 10);
-    if (decision !== 'APPROVED' && decision !== 'REJECTED') throw new ApiError('Invalid decision.');
-    const note = typeof payload.note === 'string' ? payload.note.slice(0, 500) : '';
+  book(ctx, payload) {
+    const me = user(ctx);
+    if (me.role !== 'STUDENT') throw new ApiError('Only students can book classes.');
+    const start = text(payload, 'start', 40, true);
+    const topic = text(payload, 'topic', 200).trim();
+    const studentNote = text(payload, 'studentNote', 1000).trim();
 
-    const decided = withLock(() => {
-      const request = findRequest(id);
-      if (request.status !== 'PENDING') throw new ApiError('This request has already been decided.');
-      const requester = findUser(request.email);
-      if (!canDecide(me, requester)) throw new ApiError('You are not allowed to decide on this request.');
+    const { booking, settings } = withLock(() => {
+      const schedule = scheduleContext(ctx.now);
+      const result = checkNewBooking(schedule, me.email, start);
+      if (!result.slot) throw new ApiError(result.errors.join('\n'));
+      const created: Booking = {
+        id: Utilities.getUuid(),
+        studentEmail: me.email,
+        start: result.slot.start,
+        end: result.slot.end,
+        status: 'CONFIRMED',
+        lessonId: null,
+        topic,
+        studentNote,
+        meetingLink: schedule.settings.defaultMeetingLink,
+        materials: '',
+        feedback: '',
+        privateNote: '',
+        createdAt: ctx.now.toISOString(),
+        cancelledAt: null,
+        cancelledBy: null,
+        cancelReason: '',
+        reminderSentAt: null,
+      };
+      db.insertBooking(created);
+      return { booking: created, settings: schedule.settings };
+    });
 
-      if (decision === 'APPROVED' && CREDIT_TYPES.has(request.type)) {
-        const year = Number(request.startDate.slice(0, 4));
-        // Pending reservations already include this request, so check against the raw balance.
-        if (balanceFor(db.ledger(), requester.email, year) < request.days) {
-          throw new ApiError('The employee no longer has enough credits for this request.');
+    notify.booked(booking, me, teacherOf(db.users()), settings);
+    return studentView(booking);
+  },
+
+  cancelBooking(ctx, payload) {
+    const me = user(ctx);
+    const id = text(payload, 'id', 64, true);
+    const reason = text(payload, 'reason', 500).trim();
+    const isTeacher = me.role === 'ADMIN';
+
+    const { cancelled, settings } = withLock(() => {
+      const booking = findBooking(id);
+      const settings = db.settings();
+      if (isTeacher) {
+        if (!canTeacherCancel(booking, ctx.now))
+          throw new ApiError('Only upcoming confirmed classes can be cancelled.');
+      } else {
+        if (booking.studentEmail !== me.email) throw new ApiError('Booking not found.');
+        if (!canStudentCancel(booking, ctx.now, settings)) {
+          throw new ApiError(
+            `Classes can only be cancelled at least ${settings.cancelNoticeHours} hours before they start.`,
+          );
         }
-        db.insertLedger({
-          id: Utilities.getUuid(),
-          email: requester.email,
-          year,
-          delta: -request.days,
-          kind: 'USE',
-          requestId: request.id,
-          note: `${request.type} ${request.startDate}–${request.endDate}`,
-          createdBy: me.email,
-          createdAt: nowIso(),
-        });
       }
-
-      const patch = {
-        status: decision,
-        approverEmail: me.email,
-        decidedAt: nowIso(),
-        decisionNote: note || null,
-      } as const;
-      db.updateRequest(id, patch);
-      return { ...request, ...patch };
+      const cancelled: Booking = {
+        ...booking,
+        status: 'CANCELLED',
+        cancelledAt: ctx.now.toISOString(),
+        cancelledBy: me.email,
+        cancelReason: reason,
+      };
+      db.updateBooking(cancelled);
+      return { cancelled, settings };
     });
 
-    notify.decided(decided, me);
-    return decided;
+    const users = db.users();
+    const student = users.find((u) => u.email === cancelled.studentEmail);
+    if (student) notify.cancelled(cancelled, student, teacherOf(users), isTeacher, settings);
+    return isTeacher ? cancelled : studentView(cancelled);
   },
 
-  listUsers(me) {
-    requireAdmin(me);
-    return db.users().sort((a, b) => a.name.localeCompare(b.name));
+  allBookings() {
+    const users = db.users();
+    return db.bookings().map((b) => teacherView(b, users));
   },
 
-  saveUser(me, payload) {
-    requireAdmin(me);
-    const record = payload.user;
-    if (typeof record !== 'object' || record === null) throw new ApiError('Missing user.');
-    const fields = Object.fromEntries(
-      USER_COLUMNS.map((col) => [col, requireString(record as Record<string, unknown>, col, 200)]),
-    );
-    const { user, errors } = userFromRecord(fields);
-    if (errors.length) throw new ApiError(errors.join(' '));
-    const isNew = payload.isNew === true;
-    assertNoSelfLockout(me, user);
+  updateBooking(ctx, payload) {
+    const id = text(payload, 'id', 64, true);
+    const lessonId = text(payload, 'lessonId', 64) || null;
+    const details = {
+      lessonId,
+      topic: text(payload, 'topic', 200).trim(),
+      meetingLink: text(payload, 'meetingLink', 500).trim(),
+      materials: text(payload, 'materials', 2000).trim(),
+      feedback: text(payload, 'feedback', 5000).trim(),
+      privateNote: text(payload, 'privateNote', 5000).trim(),
+    };
+    fail(bookingDetailsErrors(details));
+    const status = payload.status;
+    if (status !== undefined && status !== 'COMPLETED' && status !== 'NO_SHOW') throw new ApiError('Invalid status.');
 
     return withLock(() => {
-      const users = db.users();
-      const exists = users.some((u) => u.email === user.email);
-      if (isNew && exists) throw new ApiError(`${user.email} already exists.`);
-      if (!isNew && !exists) throw new ApiError(`${user.email} was not found.`);
-
-      const next = isNew ? [...users, user] : users.map((u) => (u.email === user.email ? user : u));
-      const invalid = validateDirectory(next, [user.email]);
-      // Demoting a manager can break their direct reports; flag only problems this change introduces,
-      // not ones already present in hand-edited rows.
-      const reports = next.filter((u) => u.managerEmail === user.email).map((u) => u.email);
-      const before = validateDirectory(users, reports);
-      for (const [email, messages] of validateDirectory(next, reports)) {
-        const added = messages.filter((m) => !before.get(email)?.includes(m));
-        if (added.length) invalid.set(email, added);
+      const booking = findBooking(id);
+      if (lessonId && !db.lessons().some((l) => l.id === lessonId)) throw new ApiError('Lesson not found.');
+      if (status && !canRecordOutcome(booking, ctx.now)) {
+        throw new ApiError('Completed / no-show can only be recorded after the class has started.');
       }
-      if (invalid.size) throw directoryError(invalid);
-
-      if (isNew) db.insertUser(user);
-      else db.updateUser(user);
-      return user;
+      const updated: Booking = { ...booking, ...details, status: status ?? booking.status };
+      db.updateBooking(updated);
+      return teacherView(updated, db.users());
     });
   },
 
-  importUsers(me, payload) {
-    requireAdmin(me);
-    const csv = requireString(payload, 'csv', 500_000);
-    const dryRun = payload.dryRun !== false;
+  students(ctx) {
+    const bookings = db.bookings();
+    const now = ctx.now.getTime();
+    return db
+      .users()
+      .filter((u) => u.role === 'STUDENT')
+      .map((u) => {
+        const mine = bookings.filter((b) => b.studentEmail === u.email);
+        const past = mine.filter((b) => b.status !== 'CANCELLED' && Date.parse(b.start) <= now);
+        return {
+          ...u,
+          upcoming: mine.filter((b) => b.status === 'CONFIRMED' && Date.parse(b.start) > now).length,
+          completed: mine.filter((b) => b.status === 'COMPLETED').length,
+          cancelled: mine.filter((b) => b.status === 'CANCELLED').length,
+          noShows: mine.filter((b) => b.status === 'NO_SHOW').length,
+          lastClass:
+            past
+              .map((b) => b.start)
+              .sort()
+              .pop() ?? null,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  setStudentActive(_ctx, payload) {
+    const email = text(payload, 'email', 200, true).trim().toLowerCase();
+    if (typeof payload.active !== 'boolean') throw new ApiError('Invalid active.');
+    const active = payload.active;
+    return withLock(() => {
+      const student = db.users().find((u) => u.email === email);
+      if (!student || student.role !== 'STUDENT') throw new ApiError('Student not found.');
+      const updated = { ...student, active };
+      db.updateUser(updated);
+      return updated;
+    });
+  },
+
+  schedule() {
+    return { rules: db.rules(), timeOff: db.timeOff(), settings: db.settings() };
+  },
+
+  saveSchedule(_ctx, payload) {
+    if (!Array.isArray(payload.rules) || payload.rules.length > 100) throw new ApiError('Invalid availability.');
+    const rules: AvailabilityRule[] = payload.rules.map((r: unknown) => {
+      if (typeof r !== 'object' || r === null) throw new ApiError('Invalid availability.');
+      const p = r as Payload;
+      return {
+        id: Utilities.getUuid(),
+        weekday: int(p, 'weekday') as Weekday,
+        start: text(p, 'start', 5, true),
+        end: text(p, 'end', 5, true),
+      };
+    });
+    fail(availabilityErrors(rules));
+    const settings = readSettings(payload.settings);
 
     return withLock(() => {
-      const plan = planUserImport(csv, db.users());
-      const self = plan.users.find((u) => u.email === me.email);
-      if (self && (self.role !== 'ADMIN' || !self.active)) {
-        plan.errors.unshift({
-          line: 0,
-          email: me.email,
-          messages: ['The file would remove your own admin role or deactivate you.'],
-        });
-      }
-      const { users, ...summary } = plan;
-      const changed = summary.creates.length + summary.updates.length > 0;
-      if (dryRun || summary.errors.length || !changed) return { ...summary, applied: false };
+      const sorted = rules.sort((a, b) => a.weekday - b.weekday || a.start.localeCompare(b.start));
+      db.replaceRules(sorted);
+      db.saveSettings(settings);
+      return { rules: sorted, timeOff: db.timeOff(), settings };
+    });
+  },
 
-      db.replaceUsers(users);
-      return { ...summary, applied: true };
+  addTimeOff(_ctx, payload) {
+    const entry = {
+      id: Utilities.getUuid(),
+      startDate: text(payload, 'startDate', 10, true),
+      endDate: text(payload, 'endDate', 10, true),
+      note: text(payload, 'note', 200).trim(),
+    };
+    fail(timeOffErrors(entry));
+    withLock(() => db.insertTimeOff(entry));
+    return entry;
+  },
+
+  removeTimeOff(_ctx, payload) {
+    const id = text(payload, 'id', 64, true);
+    withLock(() => db.deleteTimeOff(id));
+    return { id };
+  },
+
+  saveLesson(ctx, payload) {
+    const id = text(payload, 'id', 64) || null;
+    const fields = {
+      title: text(payload, 'title', 120).trim(),
+      level: text(payload, 'level', 30) as Level | '',
+      summary: text(payload, 'summary', 500).trim(),
+      content: text(payload, 'content', 20_000),
+      materialsUrl: text(payload, 'materialsUrl', 500).trim(),
+    };
+    fail(lessonErrors(fields));
+
+    return withLock(() => {
+      if (!id) {
+        const created = { ...fields, id: Utilities.getUuid(), createdAt: ctx.now.toISOString() };
+        db.insertLesson(created);
+        return created;
+      }
+      const existing = db.lessons().find((l) => l.id === id);
+      if (!existing) throw new ApiError('Lesson not found.');
+      const updated = { ...existing, ...fields };
+      db.updateLesson(updated);
+      return updated;
+    });
+  },
+
+  deleteLesson(_ctx, payload) {
+    const id = text(payload, 'id', 64, true);
+    return withLock(() => {
+      const used = db.bookings().filter((b) => b.lessonId === id).length;
+      if (used) throw new ApiError(`This lesson is assigned to ${used} booking(s). Remove it from them first.`);
+      db.deleteLesson(id);
+      return { id };
     });
   },
 };
+
+/** Hourly trigger: emails students about confirmed classes starting within 24 hours, once per booking. */
+export function sendReminders(): void {
+  const now = Date.now();
+  const settings = db.settings();
+  const users = db.users();
+  withLock(() => {
+    for (const b of db.bookings()) {
+      const startsIn = Date.parse(b.start) - now;
+      if (b.status !== 'CONFIRMED' || b.reminderSentAt || startsIn <= 0 || startsIn > 24 * HOUR_MS) continue;
+      const student = users.find((u) => u.email === b.studentEmail);
+      if (student?.active) notify.reminder(b, student, settings);
+      db.updateBooking({ ...b, reminderSentAt: new Date(now).toISOString() });
+    }
+  });
+}

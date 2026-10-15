@@ -32,6 +32,6 @@ export function eachDate(start: IsoDate, end: IsoDate): IsoDate[] {
   return dates;
 }
 
-export function rangesOverlap(aStart: IsoDate, aEnd: IsoDate, bStart: IsoDate, bEnd: IsoDate): boolean {
-  return aStart <= bEnd && bStart <= aEnd;
+export function addDays(value: IsoDate, days: number): IsoDate {
+  return toIsoDate(new Date(parseIsoDate(value).getTime() + days * 86_400_000));
 }

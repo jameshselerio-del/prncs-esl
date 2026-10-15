@@ -1,85 +1,78 @@
-# Requirements — PRNCS Leaves Tracking
+# Requirements — ESL Class Booking
 
 ## Scope
 
-A web app for filing, approving and tracking employee leaves across the
-**Philippines** and **Japan** offices (~100 users).
+A booking site where students book one-to-one ESL classes with a single
+teacher. The teacher publishes weekly availability; students book open slots,
+see their lessons and manage their profile.
 
 ## Roles
 
-| Role       | Can do                                                                                                          |
-| ---------- | --------------------------------------------------------------------------------------------------------------- |
-| Employee   | File, view and cancel own leave requests; view own balance and the team calendar                                |
-| Manager    | Everything an employee can, plus approve/reject requests of employees who **report directly** to them           |
-| HR / Admin | Everything above, plus approve/reject **any** request, manage users, holidays and settings, bulk-import via CSV |
+| Role    | Who                 | Can do                                                                                                        |
+| ------- | ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Admin   | The teacher         | Manage availability, time off and booking settings; view and manage all bookings; manage lessons and students |
+| Student | Anyone who signs up | Book classes, view availability, view and cancel own bookings, view lesson details, manage own profile        |
 
-Approval rules (enforced server-side):
+- **Sign-up is open:** anyone with a Google account can sign in. On first sign-in
+  they complete a short profile and become a Student.
+- The teacher is the Users row with role `ADMIN`. The teacher can deactivate a
+  student, which blocks sign-in and booking.
 
-- An approver must be the requester's **direct manager** or an **HR/Admin**.
-- No one can approve or reject their **own** request (an HR/Admin's own leave
-  is approved by their manager or another HR/Admin).
+## Student features
 
-## Leave types and policy
+| Page        | Contents                                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Home        | Next class (time, lesson, contents, meeting link, materials), upcoming classes, recent classes with teacher feedback, lesson library |
+| Book        | Available slots for the booking window, grouped by day in the student's time zone; book with an optional topic/note                  |
+| My bookings | Upcoming, past and cancelled bookings in **table**, **calendar** (month) and **timeline** views; cancel within policy                |
+| Profile     | Name, time zone, English level, native language, learning goals, contact; email is read-only                                         |
 
-| Type      | Probationary | Regular | Uses credits |
-| --------- | ------------ | ------- | ------------ |
-| Vacation  | ✗            | ✓       | Yes          |
-| Sick      | ✗            | ✓       | Yes          |
-| Emergency | ✗            | ✓       | Yes          |
-| Unpaid    | ✓            | ✓       | No           |
-| Holiday   | ✓            | ✓       | No           |
+## Teacher features
 
-- **Probationary** employees have **0 credits** and can only file _Unpaid_ and
-  _Holiday_ leave.
-- **Regular** employees get **one shared pool of 5 credits per year** used by
-  Vacation, Sick and Emergency.
-- Credits **refresh every 1 January**. Unused credits do not carry over.
-- **Holiday leave** = taking a public holiday off when that holiday falls on one
-  of the employee's working days. It may only be filed for dates that are public
-  holidays in the employee's office calendar, and uses no credits.
+| Page         | Contents                                                                                                                          |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Bookings     | All bookings in table, calendar and timeline views with student names; filter by status/student; export CSV                       |
+| Booking edit | Assign a lesson, topic, meeting link, materials, feedback (visible to student) and a private note; mark completed/no-show; cancel |
+| Availability | Weekly hours (several ranges per day), time off (date ranges), booking settings                                                   |
+| Lessons      | Lesson library: title, level, summary, contents, materials link                                                                   |
+| Students     | List with profile details and booking counts; activate/deactivate                                                                 |
 
-## Calendars and working days
+## Booking rules (enforced server-side)
 
-- Each employee has their own **working days** (e.g. Mon–Fri, Mon–Sat).
-- Each employee belongs to one **office**: `PH` or `JP`. The office decides
-  which public holiday calendar applies.
-- A leave request's **day count** = the dates in the range that are the
-  employee's working days, excluding public holidays of their office (except
-  for _Holiday_ leave, which counts only those holidays).
-- Leaves that use credits cannot span two calendar years.
-- Requests must not overlap another pending/approved request of the same
-  employee.
+- Teacher hours are set in **Asia/Manila** (UTC+8, no daylight saving). All
+  booking times are stored in UTC and shown in each viewer's time zone.
+- A slot is bookable when it:
+  - fits entirely inside a weekly availability range,
+  - is not on a time-off date (Manila date),
+  - does not overlap a confirmed or completed booking,
+  - starts at least **min notice** from now and within the **booking window**.
+- Slots start every **slot step** minutes and last **lesson length** minutes.
+- Booking is **instant** (status `CONFIRMED`).
+- A student can hold at most **max upcoming** confirmed bookings.
+- Students can cancel their own confirmed bookings up to **cancel notice**
+  hours before the start. The teacher can cancel any upcoming booking.
+- The teacher can mark past confirmed bookings `COMPLETED` or `NO_SHOW`.
 
-## Request lifecycle
+| Setting        | Default    |
+| -------------- | ---------- |
+| Lesson length  | 50 minutes |
+| Slot step      | 30 minutes |
+| Min notice     | 12 hours   |
+| Booking window | 30 days    |
+| Cancel notice  | 24 hours   |
+| Max upcoming   | 5          |
 
-`PENDING → APPROVED | REJECTED`, and `PENDING | APPROVED (future) → CANCELLED`
-by the requester. Cancelling an approved request refunds its credits.
+## Notifications (email)
 
-## Notifications (email only)
-
-| Event               | Recipients                          |
-| ------------------- | ----------------------------------- |
-| Request filed       | Direct manager (+ HR if no manager) |
-| Approved / rejected | Requester                           |
-| Cancelled           | Approver(s) who were notified       |
-
-## Admin features
-
-- **CSV bulk upload** for users (and holidays). Validated row-by-row; errors are
-  reported without importing partial bad rows.
-- Manual balance adjustment with a reason (recorded in the ledger).
+| Event                   | Recipients                      |
+| ----------------------- | ------------------------------- |
+| Class booked            | Student (confirmation), teacher |
+| Cancelled by student    | Teacher                         |
+| Cancelled by teacher    | Student                         |
+| Reminder (~24 h before) | Student                         |
 
 ## Non-functional
 
-- Static hosting (GitHub Pages); data stored in a Google Sheet in the owner's
-  Google Drive.
-- Sign-in with Google. Only emails present in the Users sheet (and active) can
-  use the app.
-- No compliance / data-retention requirements.
-
-## Open questions
-
-1. Half-day leaves — supported? (MVP assumes whole days only.)
-2. Mid-year regularization — full 5 credits or prorated? (MVP assumes full 5.)
-3. Can employees file leave in the past (e.g. sick leave after the fact)?
-   (MVP allows past dates for Sick and Emergency only.)
+- Static hosting (GitHub Pages); data in a Google Sheet in the teacher's Drive;
+  Google Apps Script backend; Google Sign-In.
+- No payments.

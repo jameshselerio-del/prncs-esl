@@ -1,8 +1,8 @@
-# PRNCS Leaves Tracking
+# ESL Class Booking
 
-Leave filing, approval and balance tracking for the Philippines and Japan
-offices. Static React app on GitHub Pages, backed by a Google Apps Script API
-that stores data in a Google Sheet in Drive.
+A booking site where students book one-to-one ESL classes with a single
+teacher. Static React app on GitHub Pages, backed by a Google Apps Script API
+that stores data in a Google Sheet in the teacher's Drive.
 
 - Requirements: [docs/requirements.md](docs/requirements.md)
 - Architecture: [docs/architecture.md](docs/architecture.md)
@@ -45,14 +45,18 @@ npm run dev                  # http://localhost:5173
 3. In the Apps Script editor → **Project Settings → Script properties**, add:
    - `GOOGLE_CLIENT_ID` — same value as `VITE_GOOGLE_CLIENT_ID`
    - `APP_URL` — the GitHub Pages URL (used in emails)
-4. Run `setupDatabase` once (creates the database Sheet in your Drive and
-   saves `SPREADSHEET_ID`), then `installTriggers` once (daily job that grants
-   yearly credits).
+4. Run `setupDatabase` (creates the database Sheet in your Drive and saves
+   `SPREADSHEET_ID`; on an existing leave-tracking Sheet it converts the Users
+   tab and renames the old leave tabs to `old_…`). Then run `installTriggers`
+   (hourly class-reminder emails). Both are safe to re-run.
 5. **Deploy → New deployment → Web app**, execute as _Me_, access _Anyone_.
    Put the `/exec` URL in `.env.local` as `VITE_API_URL`.
-6. Add yourself as the first user: a row in the `Users` tab, e.g.
-   `you@example.com | Your Name | PH | ADMIN | | REGULAR | 2026-01-01 | 1,2,3,4,5 | TRUE`.
-   Add PH/JP public holidays to the `Holidays` tab.
+6. Make the teacher an admin: a row in the `Users` tab with role `ADMIN`, e.g.
+   `teacher@gmail.com | Teacher Name | ADMIN | TRUE | Asia/Manila`.
+   (A migrated leave-tracking admin is already an admin.) Students create their
+   own accounts on first sign-in.
+7. Sign in as the teacher and set weekly hours and booking settings under
+   **Availability**, then add lessons under **Lessons**.
 
 After later backend changes: `npm run backend:deploy`. It pushes the code and
 updates the existing deployment to a new version, so the `/exec` URL stays the
