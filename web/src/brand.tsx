@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { LegalLinks } from './components/LegalLinks';
 
 /** Komorebi English brand copy (see the brand identity canvas). */
 export const BRAND = {
@@ -63,38 +64,41 @@ export function Logo() {
 /** Full-page welcome layout used by the sign-in screens: lockup, tagline, then the sign-in controls. */
 export function SignInLayout({ children }: { children: ReactNode }) {
   return (
-    <main className="signin">
+    <div className="signin-page">
       <LeafShape className="signin-leaf top" />
       <LeafShape className="signin-leaf bottom" color="var(--bark)" />
-      <div className="brand-lockup">
-        <LeafMark className="mark" size={120} label="Komorebi English leaf mark" />
-        <div className="word">
-          <h1 className="name">
-            {BRAND.wordmark}
-            <span className="visually-hidden"> English</span>
-          </h1>
-          <div className="sub">
-            <span className="en" aria-hidden="true">
-              {BRAND.sub}
-            </span>
-            <span className="ja" lang="ja">
-              {BRAND.nameJa}
-            </span>
+      <main className="signin">
+        <div className="brand-lockup">
+          <LeafMark className="mark" size={120} label="Komorebi English leaf mark" />
+          <div className="word">
+            <h1 className="name">
+              {BRAND.wordmark}
+              <span className="visually-hidden"> English</span>
+            </h1>
+            <div className="sub">
+              <span className="en" aria-hidden="true">
+                {BRAND.sub}
+              </span>
+              <span className="ja" lang="ja">
+                {BRAND.nameJa}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-      <hr className="divider" />
-      <div className="tagline">
-        <p className="lead">{BRAND.tagline}</p>
-        <p className="sub">
-          Private lessons with {BRAND.teacher} ·{' '}
-          <span className="ja" lang="ja">
-            {BRAND.taglineJa}
-          </span>
-        </p>
-      </div>
-      <div className="signin-card">{children}</div>
-    </main>
+        <hr className="divider" />
+        <div className="tagline">
+          <p className="lead">{BRAND.tagline}</p>
+          <p className="sub">
+            Private lessons with {BRAND.teacher} ·{' '}
+            <span className="ja" lang="ja">
+              {BRAND.taglineJa}
+            </span>
+          </p>
+        </div>
+        <div className="signin-card">{children}</div>
+      </main>
+      <SiteFooter />
+    </div>
   );
 }
 
@@ -107,5 +111,24 @@ export function Bilingual({ en, ja }: { en: string; ja: string }) {
         {ja}
       </span>
     </span>
+  );
+}
+
+const YEAR = new Date().getFullYear();
+
+/** Footer on every page, signed in or not: brand line plus the legal links. */
+export function SiteFooter() {
+  return (
+    <footer className="footer">
+      <span>
+        © {YEAR} {BRAND.name} ·{' '}
+        <span className="ja" lang="ja">
+          {BRAND.nameJa}
+        </span>
+      </span>
+      <span>
+        <LegalLinks />
+      </span>
+    </footer>
   );
 }

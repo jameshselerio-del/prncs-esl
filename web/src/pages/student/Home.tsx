@@ -7,12 +7,14 @@ import { useSession } from '../../session';
 import { fmtRange, relative } from '../../time';
 import { Bilingual, LeafShape } from '../../brand';
 import { BookingDetail } from './BookingDetail';
+import { BookingPicker } from './BookingPicker';
 
 export function Home() {
   const { user, now } = useSession();
   const bookings = useQuery('myBookings');
   const lessons = useQuery('lessons');
   const [selected, setSelected] = useState<StudentBooking | null>(null);
+  const [justBooked, setJustBooked] = useState<StudentBooking | null>(null);
   const lessonMap = useMemo(() => new Map((lessons.data ?? []).map((l) => [l.id, l])), [lessons.data]);
 
   const t = now;
@@ -59,12 +61,28 @@ export function Home() {
           </>
         ) : (
           <>
-            <p>You have no upcoming classes.</p>
-            <Link to="/book" className="button primary">
-              <Bilingual en="Book a class" ja="予約する" />
-            </Link>
+            <p>You have no upcoming classes. Pick a time below to book one.</p>
           </>
         )}
+      </section>
+
+      <section aria-labelledby="home-book">
+        <h3 id="home-book">
+          <Bilingual en="Book a class" ja="予約する" />
+        </h3>
+        {justBooked && (
+          <p className="success" role="status">
+            Booked {fmtRange(justBooked.start, justBooked.end, user.timeZone)}. A confirmation email is on its way.
+          </p>
+        )}
+        <BookingPicker
+          compact
+          upcoming={upcoming.length}
+          onBooked={(b) => {
+            setJustBooked(b);
+            bookings.reload();
+          }}
+        />
       </section>
 
       {upcoming.length > 1 && (

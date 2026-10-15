@@ -3,9 +3,10 @@ import { HashRouter, Link, NavLink, Navigate, Route, Routes } from 'react-router
 import type { MeResult } from '../../shared/api';
 import { useApi, useQuery } from './api';
 import { APP_NAME, useAuth } from './auth';
-import { BRAND, Logo } from './brand';
+import { BRAND, Logo, SiteFooter } from './brand';
 import { ErrorText } from './components/Bits';
-import { LegalLinks, PrivacyLink, TermsLink } from './components/LegalLinks';
+import { AccountMenu } from './components/AccountMenu';
+import { PrivacyLink, TermsLink } from './components/LegalLinks';
 import { ProfileForm } from './components/ProfileForm';
 import { Profile } from './pages/Profile';
 import { Book } from './pages/student/Book';
@@ -22,19 +23,16 @@ const STUDENT_NAV = [
   { to: '/', label: 'Home' },
   { to: '/book', label: 'Book a class' },
   { to: '/bookings', label: 'My bookings' },
-  { to: '/profile', label: 'Profile' },
 ];
 const TEACHER_NAV = [
   { to: '/', label: 'Bookings' },
   { to: '/availability', label: 'Availability' },
   { to: '/lessons', label: 'Lessons' },
   { to: '/students', label: 'Students' },
-  { to: '/profile', label: 'Profile' },
 ];
 
 // HashRouter: GitHub Pages serves static files only, so deep links must live after the '#'.
 export function App() {
-  const { signOut } = useAuth();
   const me = useQuery('me');
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -69,13 +67,7 @@ export function App() {
               </NavLink>
             ))}
           </nav>
-          <span className="who">
-            {session.user.name}
-            {isTeacher && <span className="tag">Teacher</span>}
-            <button type="button" className="link" onClick={() => signOut()}>
-              Sign out
-            </button>
-          </span>
+          <AccountMenu />
         </header>
         <main className="page">
           <Routes>
@@ -97,9 +89,7 @@ export function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-        <footer className="footer">
-          <LegalLinks />
-        </footer>
+        <SiteFooter />
       </HashRouter>
     </SessionContext.Provider>
   );
@@ -109,40 +99,43 @@ function Register({ me, onDone }: { me: Extract<MeResult, { registered: false }>
   const api = useApi();
   const { signOut } = useAuth();
   return (
-    <main className="page narrow">
-      <Logo />
-      <h1>Welcome to {APP_NAME}</h1>
-      <p>
-        Tell us a little about yourself to start booking classes ·{' '}
-        <span className="ja" lang="ja">
-          ようこそ
-        </span>
-      </p>
-      <ProfileForm
-        initial={{
-          name: me.suggestedName,
-          timeZone: browserTimeZone(),
-          level: '',
-          nativeLanguage: '',
-          goals: '',
-          contact: '',
-        }}
-        email={me.email}
-        submitLabel="Create my account"
-        onSubmit={async (profile) => {
-          await api('register', profile);
-          onDone();
-        }}
-      />
-      <p className="hint">
-        Not you?{' '}
-        <button type="button" className="link" onClick={() => signOut()}>
-          Use another account
-        </button>
-      </p>
-      <p className="hint">
-        By creating an account you agree to the <TermsLink /> and <PrivacyLink />.
-      </p>
-    </main>
+    <>
+      <main className="page narrow">
+        <Logo />
+        <h1>Welcome to {APP_NAME}</h1>
+        <p>
+          Tell us a little about yourself to start booking classes ·{' '}
+          <span className="ja" lang="ja">
+            ようこそ
+          </span>
+        </p>
+        <ProfileForm
+          initial={{
+            name: me.suggestedName,
+            timeZone: browserTimeZone(),
+            level: '',
+            nativeLanguage: '',
+            goals: '',
+            contact: '',
+          }}
+          email={me.email}
+          submitLabel="Create my account"
+          onSubmit={async (profile) => {
+            await api('register', profile);
+            onDone();
+          }}
+        />
+        <p className="hint">
+          Not you?{' '}
+          <button type="button" className="link" onClick={() => signOut()}>
+            Use another account
+          </button>
+        </p>
+        <p className="hint">
+          By creating an account you agree to the <TermsLink /> and <PrivacyLink />.
+        </p>
+      </main>
+      <SiteFooter />
+    </>
   );
 }
