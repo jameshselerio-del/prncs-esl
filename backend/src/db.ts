@@ -1,6 +1,5 @@
 import { getConfig } from './config';
 import type {
-  EmploymentStatus,
   Holiday,
   LeaveRequest,
   LeaveType,
@@ -8,14 +7,13 @@ import type {
   LedgerKind,
   Office,
   RequestStatus,
-  Role,
   User,
-  Weekday,
 } from '../../shared/types';
+import { formatWorkingDays, normalizeEmail, USER_COLUMNS, userFromRecord } from '../../shared/users';
 
 /** Column order of every tab. The header row in the Sheet must match. */
 export const SCHEMA = {
-  Users: ['email', 'name', 'office', 'role', 'managerEmail', 'status', 'regularizedOn', 'workingDays', 'active'],
+  Users: USER_COLUMNS,
   Requests: [
     'id',
     'email',
@@ -69,21 +67,27 @@ function updateRow(table: Table, keyColumn: string, key: string, patch: Row): vo
 
 const nullable = (v: string): string | null => (v === '' ? null : v);
 
-function toUser(r: Row): User {
+// Lenient: rows edited by hand in the Sheet still load; admin saves are validated separately.
+const toUser = (r: Row): User => userFromRecord(r).user;
+
+function userToRow(u: User): Row {
   return {
-    email: r.email.trim().toLowerCase(),
-    name: r.name,
-    office: r.office as Office,
-    role: r.role as Role,
-    managerEmail: nullable(r.managerEmail.trim().toLowerCase()),
-    status: r.status as EmploymentStatus,
-    regularizedOn: nullable(r.regularizedOn),
-    workingDays: r.workingDays
-      .split(',')
-      .filter((d) => d.trim() !== '')
-      .map((d) => Number(d) as Weekday),
-    active: r.active.toUpperCase() === 'TRUE',
+    ...toRow(u),
+    workingDays: formatWorkingDays(u.workingDays),
+    active: u.active ? 'TRUE' : 'FALSE',
   };
+}
+
+/** Updates the row whose email matches, ignoring case and stray spaces typed into the Sheet. */
+function updateUserRow(user: User): void {
+  const s = sheet('Users');
+  const values = s.getDataRange().getDisplayValues();
+  const header = values[0];
+  const emailIndex = header.indexOf('email');
+  const rowIndex = values.findIndex((r, i) => i > 0 && normalizeEmail(r[emailIndex]) === user.email);
+  if (rowIndex < 0) throw new Error(`Users row not found: ${user.email}`);
+  const row = userToRow(user);
+  s.getRange(rowIndex + 1, 1, 1, header.length).setValues([header.map((h) => row[h] ?? '')]);
 }
 
 function toRequest(r: Row): LeaveRequest {
@@ -127,6 +131,8 @@ export const db = {
   holidays: (): Holiday[] =>
     readRows('Holidays').map((r) => ({ date: r.date, office: r.office as Office, name: r.name })),
 
+  insertUser: (u: User): void => appendRow('Users', userToRow(u)),
+  updateUser: (u: User): void => updateUserRow(u),
   insertRequest: (r: LeaveRequest): void => appendRow('Requests', toRow(r)),
   updateRequest: (id: string, patch: Partial<LeaveRequest>): void => updateRow('Requests', 'id', id, toRow(patch)),
   insertLedger: (e: LedgerEntry): void => appendRow('Ledger', toRow(e)),

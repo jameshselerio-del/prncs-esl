@@ -11,6 +11,7 @@ import {
   validateNewRequest,
 } from '../../shared/policy';
 import type { IsoDate, LeaveRequest, LeaveType, Office, User } from '../../shared/types';
+import { USER_COLUMNS, userFromRecord, validateDirectory } from '../../shared/users';
 import { db } from './db';
 import { ApiError } from './errors';
 import { notify } from './mail';
@@ -67,6 +68,23 @@ function findUser(email: string, users = db.users()): User {
   const user = users.find((u) => u.email === email);
   if (!user) throw new ApiError(`User not found: ${email}`);
   return user;
+}
+
+function requireAdmin(me: User): void {
+  if (me.role !== 'ADMIN') throw new ApiError('Only HR/Admin can do this.');
+}
+
+/** Admins must not be able to remove their own admin access by accident. */
+function assertNoSelfLockout(me: User, updated: User): void {
+  if (updated.email === me.email && (updated.role !== 'ADMIN' || !updated.active)) {
+    throw new ApiError('You cannot remove your own admin role or deactivate yourself. Ask another admin.');
+  }
+}
+
+/** Turns validateDirectory output into one readable error message. */
+function directoryError(errors: Map<string, string[]>): ApiError {
+  const lines = [...errors].map(([email, messages]) => `${email}: ${messages.join(' ')}`);
+  return new ApiError(lines.join('\n'));
 }
 
 type Handler<A extends Action> = (me: User, payload: Record<string, unknown>) => Api[A][1];
@@ -220,5 +238,46 @@ export const handlers: { [A in Action]: Handler<A> } = {
 
     notify.decided(decided, me);
     return decided;
+  },
+
+  listUsers(me) {
+    requireAdmin(me);
+    return db.users().sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  saveUser(me, payload) {
+    requireAdmin(me);
+    const record = payload.user;
+    if (typeof record !== 'object' || record === null) throw new ApiError('Missing user.');
+    const fields = Object.fromEntries(
+      USER_COLUMNS.map((col) => [col, requireString(record as Record<string, unknown>, col, 200)]),
+    );
+    const { user, errors } = userFromRecord(fields);
+    if (errors.length) throw new ApiError(errors.join(' '));
+    const isNew = payload.isNew === true;
+    assertNoSelfLockout(me, user);
+
+    return withLock(() => {
+      const users = db.users();
+      const exists = users.some((u) => u.email === user.email);
+      if (isNew && exists) throw new ApiError(`${user.email} already exists.`);
+      if (!isNew && !exists) throw new ApiError(`${user.email} was not found.`);
+
+      const next = isNew ? [...users, user] : users.map((u) => (u.email === user.email ? user : u));
+      const invalid = validateDirectory(next, [user.email]);
+      // Demoting a manager can break their direct reports; flag only problems this change introduces,
+      // not ones already present in hand-edited rows.
+      const reports = next.filter((u) => u.managerEmail === user.email).map((u) => u.email);
+      const before = validateDirectory(users, reports);
+      for (const [email, messages] of validateDirectory(next, reports)) {
+        const added = messages.filter((m) => !before.get(email)?.includes(m));
+        if (added.length) invalid.set(email, added);
+      }
+      if (invalid.size) throw directoryError(invalid);
+
+      if (isNew) db.insertUser(user);
+      else db.updateUser(user);
+      return user;
+    });
   },
 };
