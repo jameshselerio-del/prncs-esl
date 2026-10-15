@@ -21,3 +21,7 @@ tmp_worktree/
 .env.local
 .env.*.local
 .clasprc.json
+
+# Playwright
+playwright-report/
+test-results/

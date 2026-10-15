@@ -18,7 +18,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run build"
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "react": "^19.3.1",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@google/clasp": "^3.4.1",
+    "@playwright/test": "^1.64.1",
     "@types/google-apps-script": "^2.0.13",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
