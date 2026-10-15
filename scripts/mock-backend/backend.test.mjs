@@ -177,6 +177,44 @@ describe('booking', () => {
   });
 });
 
+describe('teacher books for a student', () => {
+  const saturday = '2026-10-17T02:00:00.000Z'; // outside weekly availability
+  const forYuki = (start, extra = {}) =>
+    backend.call(teacher, 'bookForStudent', {
+      studentEmail: 'Yuki@Example.com',
+      start,
+      topic: 'Make-up class',
+      studentNote: '',
+      ...extra,
+    });
+
+  it('books any free future time, emails only the student, and blocks that time for others', () => {
+    const res = forYuki(saturday);
+    expect(res.ok).toBe(true);
+    expect(res.data).toMatchObject({
+      studentEmail: 'yuki@example.com',
+      studentName: 'Yuki Tanaka',
+      status: 'CONFIRMED',
+    });
+    expect(mailTo('yuki@example.com').map((m) => m.subject)).toEqual([
+      '[ESL Classes (mock)] Your teacher booked a class for you',
+    ]);
+    expect(mailTo(TEACHER.email)).toEqual([]);
+    expect(ok(yuki, 'myBookings').some((b) => b.id === res.data.id)).toBe(true);
+    expect(forYuki(new Date(Date.parse(saturday) + 20 * 60_000).toISOString()).error).toMatch(/overlaps/);
+  });
+
+  it('rejects past times, students calling it, unknown and deactivated students', () => {
+    expect(forYuki('2026-10-13T02:00:00.000Z').error).toMatch(/future/);
+    expect(err(yuki, 'bookForStudent', { studentEmail: 'yuki@example.com', start: saturday }).error).toMatch(
+      /Only the teacher/,
+    );
+    expect(forYuki(saturday, { studentEmail: TEACHER.email }).error).toBe('Student not found.');
+    ok(teacher, 'setStudentActive', { email: 'yuki@example.com', active: false });
+    expect(forYuki(saturday).error).toMatch(/deactivated/);
+  });
+});
+
 describe('cancelling', () => {
   it('lets students cancel their own classes only before the notice period', () => {
     const later = ok(yuki, 'myBookings').find((b) => b.id === 'booking-yuki-next');

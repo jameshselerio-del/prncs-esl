@@ -4,6 +4,7 @@ import {
   canStudentCancel,
   canTeacherCancel,
   checkNewBooking,
+  checkTeacherBooking,
   DEFAULT_SETTINGS,
   generateSlots,
   type ScheduleContext,
@@ -132,5 +133,23 @@ describe('cancellation and outcomes', () => {
     expect(canRecordOutcome(b, NOW)).toBe(false);
     expect(canRecordOutcome(b, during)).toBe(true);
     expect(canRecordOutcome({ ...b, status: 'CANCELLED' }, during)).toBe(false);
+  });
+});
+
+describe('checkTeacherBooking', () => {
+  it('allows any future time outside availability and notice', () => {
+    const result = checkTeacherBooking([], '2026-10-19T00:30:00.000Z', DEFAULT_SETTINGS, NOW);
+    expect(result).toEqual({
+      slot: { start: '2026-10-19T00:30:00.000Z', end: '2026-10-19T01:20:00.000Z' },
+      errors: [],
+    });
+  });
+  it('rejects past times, invalid times and overlaps with active bookings', () => {
+    expect(checkTeacherBooking([], '2026-10-18T23:00:00.000Z', DEFAULT_SETTINGS, NOW).slot).toBeNull();
+    expect(checkTeacherBooking([], 'tomorrow', DEFAULT_SETTINGS, NOW).slot).toBeNull();
+    expect(checkTeacherBooking([booking({})], '2026-10-26T01:00:00.000Z', DEFAULT_SETTINGS, NOW).slot).toBeNull();
+    expect(
+      checkTeacherBooking([booking({ status: 'CANCELLED' })], '2026-10-26T01:00:00.000Z', DEFAULT_SETTINGS, NOW).slot,
+    ).not.toBeNull();
   });
 });

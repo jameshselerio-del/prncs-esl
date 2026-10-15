@@ -340,6 +340,8 @@ section {
 /* ---------- Tables ---------- */
 
 .table-wrap {
+  /* Contains absolutely positioned children (e.g. .visually-hidden) so they scroll with the table. */
+  position: relative;
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -896,6 +898,9 @@ button.link.danger-text {
   position: absolute;
   width: 1px;
   height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
@@ -979,4 +984,18 @@ button.link.danger-text {
   background: var(--warn-soft);
   color: var(--warn);
   font-size: 0.85rem;
+}
+
+.slot-grid.compact {
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  margin-top: 6px;
+}
+
+.slot-grid.compact .slot {
+  padding: 6px;
+}
+
+.slot.selected {
+  background: var(--accent);
+  color: var(--accent-text);
 }
