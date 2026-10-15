@@ -1,0 +1,23 @@
+.git/
+.fabric/
+node_modules/
+.venv/
+__pycache__/
+venv/
+build/
+dist/
+out/
+.cache/
+cache/
+tmp/
+tmp.benchmarks/
+tmp_worktree/
+.claude/
+*.map
+*.log
+.DS_Store
+
+# Local config
+.env.local
+.env.*.local
+.clasprc.json
