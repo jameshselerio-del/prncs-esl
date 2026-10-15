@@ -4,6 +4,8 @@ import { db } from './db';
 import { ApiError } from './errors';
 import { handlers, sendReminders } from './handlers';
 
+import { ensureDatabase } from './setup';
+
 export { installTriggers, setupDatabase } from './setup';
 export { sendReminders };
 
@@ -23,6 +25,7 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
   try {
     const body = JSON.parse(e.postData.contents) as { action?: string; idToken?: unknown; payload?: unknown };
     const identity = verifyIdToken(body.idToken);
+    ensureDatabase();
     const me = db.users().find((u) => u.email === identity.email) ?? null;
     if (me && !me.active) throw new ApiError('Your account has been deactivated. Please contact your teacher.', 'AUTH');
 

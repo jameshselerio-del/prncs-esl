@@ -1,6 +1,9 @@
 import { setConfig } from './config';
 import { SCHEMA, type Table } from './db';
 
+/** Bump when SCHEMA changes so deployed scripts upgrade the Sheet on their next request. */
+export const SCHEMA_VERSION = '2';
+
 /** Tabs from the earlier leave-tracking version; kept (renamed) rather than deleted. */
 const LEGACY_TABS = ['Requests', 'Ledger', 'Holidays'];
 
@@ -66,7 +69,24 @@ export function setupDatabase(): void {
 
   const defaultSheet = ss.getSheetByName('Sheet1');
   if (defaultSheet && ss.getSheets().length > 1) ss.deleteSheet(defaultSheet);
+  setConfig('SCHEMA_VERSION', SCHEMA_VERSION);
   console.log(`Database ready: ${ss.getUrl()}`);
+}
+
+/**
+ * Called on every API request: runs setupDatabase once after a deploy that changed the schema,
+ * so the app never runs against a Sheet with missing tabs.
+ */
+export function ensureDatabase(): void {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('SCHEMA_VERSION') === SCHEMA_VERSION) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30_000);
+  try {
+    if (props.getProperty('SCHEMA_VERSION') !== SCHEMA_VERSION) setupDatabase();
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /** Run once from the editor: replaces all triggers with an hourly class-reminder job. */

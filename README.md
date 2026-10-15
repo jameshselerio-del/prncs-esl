@@ -44,7 +44,8 @@ npm run dev                  # http://localhost:5173
 2. `npm run backend:push`.
 3. In the Apps Script editor → **Project Settings → Script properties**, add:
    - `GOOGLE_CLIENT_ID` — same value as `VITE_GOOGLE_CLIENT_ID`
-   - `APP_URL` — the GitHub Pages URL (used in emails)
+   - `APP_URL` — the GitHub Pages URL used in emails,
+     `https://jameshselerio-del.github.io/prncs-esl/`
 4. Run `setupDatabase` (creates the database Sheet in your Drive and saves
    `SPREADSHEET_ID`; on an existing leave-tracking Sheet it converts the Users
    tab and renames the old leave tabs to `old_…`). Then run `installTriggers`
