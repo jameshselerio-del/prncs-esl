@@ -18,11 +18,36 @@ npm run dev                  # http://localhost:5173
 | Command                  | What it does                                          |
 | ------------------------ | ----------------------------------------------------- |
 | `npm run dev`            | Start the SPA dev server                              |
-| `npm test`               | Unit tests (Vitest) for `shared/` domain logic        |
+| `npm run dev:mock`       | SPA + local mock API, no Google sign-in (see below)   |
+| `npm run mock-api`       | Only the mock API, on http://localhost:8787           |
+| `npm test`               | Unit tests for `shared/` + backend end-to-end tests   |
 | `npm run check`          | Lint, typecheck, test and build — run before PRs      |
 | `npm run build`          | Build SPA to `dist/web` and backend to `dist/backend` |
 | `npm run backend:push`   | Bundle backend and push it to Apps Script with clasp  |
 | `npm run backend:deploy` | Push, then release it on the production `/exec` URL   |
+
+### Without Google: the mock API
+
+```bash
+npm run dev:mock             # http://localhost:5173, mock API on :8787
+```
+
+This builds the backend and runs the real `dist/backend/Code.js` in Node
+(`scripts/mock-backend/`) with in-memory fakes of the Sheet, mail, cache, lock
+and token check, seeded with a teacher (Asia/Manila), three students in other
+time zones, weekday availability, lessons and bookings. The SPA runs in Vite's
+`mock` mode (`.env.mock`): instead of the Google button it lets you pick a test
+identity, and a switcher in the bottom-right corner changes identity while
+signed in. Mock ID tokens are `email|Display Name`, so any email works; an
+unknown one goes through sign-up.
+
+Data lives in memory and is re-seeded on restart (or `POST /__mock/reset`).
+Emails are printed to the terminal; `POST /__mock/reminders` runs the hourly
+reminder job. After changing `backend/`, restart `dev:mock` to rebuild it.
+
+`scripts/mock-backend/backend.test.mjs` uses the same harness for end-to-end
+backend tests (sign-up, booking rules, cancelling, private notes, reminders,
+deactivation, leave-tracking migration) as part of `npm test`.
 
 ## First-time setup
 

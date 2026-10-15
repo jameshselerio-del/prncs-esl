@@ -27,7 +27,15 @@ Read `docs/requirements.md` and `docs/architecture.md` before changing behaviour
 - Backend code must avoid Node/DOM APIs; it targets the Apps Script V8 runtime
   (ES2019) and is bundled by `backend/build.mjs`.
 
+- `scripts/mock-backend/` runs the bundled backend in Node with in-memory fakes of
+  the Apps Script services (`fakes.mjs`). If the backend starts using a new Apps
+  Script method, add it there. Cover new API behaviour in
+  `scripts/mock-backend/backend.test.mjs`.
+
 ## Workflow
+
+- `npm run dev:mock` runs the SPA against the local mock API with switchable test
+  identities (no Google sign-in); use it to check UI changes in a browser.
 
 - Work is tracked in GitHub Issues; branch per issue, PR into `main`.
 - Run `npm run check` before opening a PR (CI runs the same plus `format:check`).

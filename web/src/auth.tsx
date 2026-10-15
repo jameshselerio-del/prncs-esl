@@ -1,8 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, Fragment, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { MockIdentityBar, MockSignIn } from './MockIdentity';
 
 const TOKEN_KEY = 'idToken';
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 export const APP_NAME = (import.meta.env.VITE_APP_NAME as string | undefined) || 'ESL Classes';
+/** `npm run dev:mock`: talk to the local mock API with test identities instead of Google. */
+const MOCK = import.meta.env.MODE === 'mock';
 
 interface AuthContextValue {
   idToken: string | null;
@@ -46,7 +49,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ idToken, signOut }}>
-      {idToken ? children : <SignIn onSignIn={signIn} notice={notice} />}
+      {idToken ? (
+        <>
+          {/* Keyed so switching identity starts from a clean slate. */}
+          <Fragment key={idToken}>{children}</Fragment>
+          {MOCK && <MockIdentityBar token={idToken} onSwitch={signIn} />}
+        </>
+      ) : MOCK ? (
+        <MockSignIn onSignIn={signIn} notice={notice} />
+      ) : (
+        <SignIn onSignIn={signIn} notice={notice} />
+      )}
     </AuthContext.Provider>
   );
 }

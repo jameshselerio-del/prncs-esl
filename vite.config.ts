@@ -13,6 +13,6 @@ export default defineConfig({
   },
   test: {
     root: '.',
-    include: ['shared/**/*.test.ts', 'backend/**/*.test.ts', 'web/**/*.test.{ts,tsx}'],
+    include: ['shared/**/*.test.ts', 'backend/**/*.test.ts', 'scripts/**/*.test.mjs', 'web/**/*.test.{ts,tsx}'],
   },
 });

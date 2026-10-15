@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "node scripts/dev-mock.mjs",
+    "mock-api": "npm run build:backend && node scripts/mock-backend/server.mjs",
     "build": "npm run build:web && npm run build:backend",
     "build:web": "vite build",
     "build:backend": "node backend/build.mjs",
