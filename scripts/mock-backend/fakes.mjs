@@ -314,6 +314,18 @@ export function createGoogleFakes({ log = console, now = Date.now } = {}) {
     base64Encode: (data) => toBuffer(data).toString('base64'),
     base64EncodeWebSafe: (data) => toBuffer(data).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
     sleep() {},
+    /** Minimal Blob: enough for MailApp attachments, which the mock records on each message. */
+    newBlob(data, contentType = null, name = null) {
+      const text = typeof data === 'string' ? data : toBuffer(data).toString('utf8');
+      return {
+        getDataAsString: () => text,
+        getContentType: () => contentType,
+        getName: () => name,
+        getBlob() {
+          return this;
+        },
+      };
+    },
   };
 
   /** Mock tokens are `email|Display Name`; anything without an `@` is rejected like an expired token. */

@@ -276,7 +276,7 @@ export const handlers: { [A in Action]: Handler<A> } = {
       return { booking: created, student, settings };
     });
 
-    notify.booked(booking, student, undefined, settings, true);
+    notify.booked(booking, student, teacherOf(db.users()), settings, true);
     return teacherView(booking, [student]);
   },
 
