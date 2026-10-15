@@ -1,4 +1,5 @@
 import type { Holiday, IsoDate, LeaveRequest, LeaveType, User } from './types';
+import type { USER_COLUMNS } from './users';
 
 /** The contract between the SPA and the Apps Script backend. */
 
@@ -32,6 +33,15 @@ export interface DecidePayload {
   note?: string;
 }
 
+/** A user as plain text fields, the same shape as a Sheet row or CSV line. */
+export type UserRecord = Record<(typeof USER_COLUMNS)[number], string>;
+
+export interface SaveUserPayload {
+  user: UserRecord;
+  /** true = add a new user; false = update the user with this email. */
+  isNew: boolean;
+}
+
 export interface PendingApproval extends LeaveRequest {
   requesterName: string;
 }
@@ -47,6 +57,8 @@ export interface Api {
   cancelRequest: [{ id: string }, LeaveRequest];
   pendingApprovals: [Empty, PendingApproval[]];
   decideRequest: [DecidePayload, LeaveRequest];
+  listUsers: [Empty, User[]];
+  saveUser: [SaveUserPayload, User];
 }
 
 export type Action = keyof Api;
