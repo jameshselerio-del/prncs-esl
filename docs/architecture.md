@@ -53,6 +53,29 @@ docs/      Requirements, architecture, backlog.
    Unknown users may only call `me` and `register` (open sign-up), which
    creates a Student row from their profile.
 
+### Username and password (optional)
+
+A registered user can add a username and password on their Profile page
+(`setPassword`; changing it needs the current password). Accounts always start
+with Google, so every email address is verified by Google.
+
+- `signInWithPassword`, `requestPasswordReset` and `resetPassword` need no token
+  (`SIGNED_OUT_ACTIONS`). Sign-in accepts the username or the email.
+- Passwords are stored as PBKDF2-HMAC-SHA256 hashes with a random salt in the
+  `Logins` tab, never in `Users`, so no handler can return them by accident.
+  Hashing is pure TypeScript (`shared/crypto.ts`) because Apps Script has no
+  PBKDF2; the iteration count is stored with each hash so it can be raised.
+- A successful sign-in returns a session token `pw.<claims>.<HMAC>` signed with
+  the `SESSION_SECRET` script property (created on first use; delete it to sign
+  everyone out). The SPA sends it in place of the Google ID token. Sessions last
+  12 hours and are tied to a fingerprint of the current password hash, so
+  changing or resetting the password ends every older session.
+- Five wrong passwords or reset codes lock password sign-in for that account
+  for 15 minutes (`CacheService`); Google sign-in still works.
+- "Forgot password?" emails a 6-digit code (15 minutes, one per minute, five
+  tries). Unknown usernames get the same response, and every new password is
+  confirmed by email.
+
 ## Sheet schema (one tab per table)
 
 | Tab            | Columns                                                                                                                                                                                                                                |
@@ -63,6 +86,7 @@ docs/      Requirements, architecture, backlog.
 | `Bookings`     | id, studentEmail, start, end (UTC ISO), status (CONFIRMED/CANCELLED/COMPLETED/NO_SHOW), lessonId, topic, studentNote, meetingLink, materials, feedback, privateNote, createdAt, cancelledAt, cancelledBy, cancelReason, reminderSentAt |
 | `Lessons`      | id, title, level, summary, content, materialsUrl, createdAt                                                                                                                                                                            |
 | `Settings`     | key, value (lesson length, slot step, notice periods, booking window, default meeting link, school name)                                                                                                                               |
+| `Logins`       | email, username (lowercase), passwordHash (`pbkdf2-sha256$iterations$salt$hash`), updatedAt — only for users who added a password                                                                                                      |
 
 `setupDatabase` creates missing tabs and is safe to re-run. It also migrates the
 earlier leave-tracking Sheet: the Users tab is converted (ADMIN stays ADMIN,

@@ -588,6 +588,58 @@ section {
   justify-content: center;
 }
 
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.or-divider::before,
+.or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.password-signin {
+  width: 100%;
+  gap: 12px;
+  text-align: left;
+}
+
+.password-signin h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.password-signin .hint {
+  margin: 0;
+}
+
+.password-signin h2,
+.password-signin > .hint {
+  text-align: center;
+}
+
+.password-signin button.link {
+  align-self: center;
+}
+
+.password-settings {
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.password-settings h3 {
+  margin-top: 0;
+}
+
 /* ---------- Cards ---------- */
 
 .cards {

@@ -15,6 +15,10 @@ see their lessons and manage their profile.
 
 - **Sign-up is open:** anyone with a Google account can sign in. On first sign-in
   they complete a short profile and become a Student.
+- **Username and password (optional):** after signing up with Google, any user
+  can add a username and password on their Profile page and then sign in either
+  way. They can change the password (with the current one) and reset a forgotten
+  one with a code emailed to their account address.
 - The teacher is the Users row with role `ADMIN`. The teacher can deactivate a
   student, which blocks sign-in and booking.
 

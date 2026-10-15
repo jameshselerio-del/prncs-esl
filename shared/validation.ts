@@ -135,3 +135,34 @@ export function bookingDetailsErrors(d: BookingDetails): string[] {
   tooLong(errors, 'Private note', d.privateNote, 5000);
   return errors;
 }
+
+export const USERNAME_MIN = 3;
+export const USERNAME_MAX = 30;
+export const PASSWORD_MIN = 8;
+export const PASSWORD_MAX = 128;
+
+/** Usernames are stored lowercase; no `@`, so a sign-in name is never mistaken for an email. */
+export const normalizeUsername = (v: string): string => v.trim().toLowerCase();
+
+export function usernameErrors(username: string): string[] {
+  const u = normalizeUsername(username);
+  if (u.length < USERNAME_MIN || u.length > USERNAME_MAX) {
+    return [`Username must be ${USERNAME_MIN}–${USERNAME_MAX} characters.`];
+  }
+  if (!/^[a-z0-9][a-z0-9._-]*$/.test(u)) {
+    return ['Username can use letters, numbers, dots, dashes and underscores, and must start with a letter or number.'];
+  }
+  return [];
+}
+
+export function passwordErrors(password: string, account: { username: string; email: string }): string[] {
+  const errors: string[] = [];
+  if (password.length < PASSWORD_MIN) errors.push(`Password must be at least ${PASSWORD_MIN} characters.`);
+  if (password.length > PASSWORD_MAX) errors.push(`Password must be at most ${PASSWORD_MAX} characters.`);
+  if (password.trim() === '') errors.push('Password cannot be only spaces.');
+  const lower = password.toLowerCase();
+  if (lower === normalizeUsername(account.username) || lower === account.email.toLowerCase()) {
+    errors.push('Password must be different from your username and email.');
+  }
+  return errors;
+}

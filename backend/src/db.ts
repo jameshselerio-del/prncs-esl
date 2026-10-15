@@ -40,9 +40,21 @@ export const SCHEMA = {
   ],
   Lessons: ['id', 'title', 'level', 'summary', 'content', 'materialsUrl', 'createdAt'],
   Settings: ['key', 'value'],
+  /** Password sign-in, kept apart from Users so hashes never reach any user-facing response. */
+  Logins: ['email', 'username', 'passwordHash', 'updatedAt'],
 } as const;
 
 export type Table = keyof typeof SCHEMA;
+
+/** A username/password for an existing user. Server-only: never return it from a handler. */
+export interface Login {
+  email: string;
+  /** Lowercase. */
+  username: string;
+  /** `pbkdf2-sha256$<iterations>$<salt hex>$<hash hex>` (see passwords.ts). */
+  passwordHash: string;
+  updatedAt: string;
+}
 type Row = Record<string, string>;
 
 let spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet | null = null;
@@ -198,6 +210,16 @@ export const db = {
   insertLesson: (l: Lesson): void => appendRow('Lessons', toRow(l)),
   updateLesson: (l: Lesson): void => updateRow('Lessons', 'id', l.id, toRow(l)),
   deleteLesson: (id: string): void => deleteRow('Lessons', 'id', id),
+
+  logins: (): Login[] =>
+    readRows('Logins').map((r) => ({
+      email: r.email.trim().toLowerCase(),
+      username: r.username.trim().toLowerCase(),
+      passwordHash: r.passwordHash,
+      updatedAt: r.updatedAt,
+    })),
+  insertLogin: (l: Login): void => appendRow('Logins', toRow(l)),
+  updateLogin: (l: Login): void => updateRow('Logins', 'email', l.email, toRow(l)),
 
   settings: readSettings,
   saveSettings: (s: Settings): void =>

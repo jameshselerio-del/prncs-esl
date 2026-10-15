@@ -1,8 +1,9 @@
 // Dev-only sign-in for `npm run dev:mock` (Vite mode `mock`). The mock API accepts
 // tokens of the form `email|Display Name` instead of Google ID tokens.
 import { useEffect, useState, type FormEvent } from 'react';
-import { APP_NAME } from './auth';
+import { APP_NAME, OrDivider } from './auth';
 import { SignInLayout } from './brand';
+import { PasswordSignIn } from './components/PasswordSignIn';
 
 interface Identity {
   label: string;
@@ -51,6 +52,8 @@ export function MockSignIn({ onSignIn, notice }: { onSignIn: (token: string) => 
         <input placeholder="Display name" value={name} onChange={(e) => setName(e.target.value)} />
         <button type="submit">Sign in as this email</button>
       </form>
+      <OrDivider />
+      <PasswordSignIn onSignIn={onSignIn} />
     </SignInLayout>
   );
 }
@@ -59,11 +62,12 @@ export function MockSignIn({ onSignIn, notice }: { onSignIn: (token: string) => 
 export function MockIdentityBar({ token, onSwitch }: { token: string; onSwitch: (token: string) => void }) {
   const identities = useIdentities();
   const known = identities.some((id) => id.token === token);
+  const label = token.startsWith('pw.') ? 'password session' : token.split('|')[0];
   return (
     <label className="mock-bar">
       Mock API as{' '}
       <select value={token} onChange={(e) => onSwitch(e.target.value)}>
-        {!known && <option value={token}>{token.split('|')[0]}</option>}
+        {!known && <option value={token}>{label}</option>}
         {identities.map((id) => (
           <option key={id.token} value={id.token}>
             {id.label}

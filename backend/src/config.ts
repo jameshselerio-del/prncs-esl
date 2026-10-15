@@ -9,6 +9,8 @@ export type ConfigKey =
   | 'ENVIRONMENT'
   /** Staging only: the Google account seedDemoData makes the teacher. */
   | 'ADMIN_EMAIL'
+  /** Random key that signs password sessions; created on first use. Delete it to sign everyone out. */
+  | 'SESSION_SECRET'
   /** "1" once the hourly reminder trigger has been installed. */
   | 'TRIGGERS_VERSION';
 

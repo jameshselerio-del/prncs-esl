@@ -1,6 +1,7 @@
 // Local stand-in for the Apps Script web app: `node scripts/mock-backend/server.mjs`.
 // POST / is forwarded to doPost. Data lives in memory and is re-seeded on restart.
 //   GET  /__mock/identities  test identities for the SPA's identity switcher
+//   GET  /__mock/mail        emails sent so far (e.g. password reset codes)
 //   POST /__mock/reminders   runs the hourly sendReminders job now
 //   POST /__mock/reset       wipes and re-seeds the data
 // Rebuild the backend (npm run build:backend) and restart to pick up backend changes.
@@ -54,6 +55,12 @@ const server = createServer((req, res) => {
         }
         case 'GET /__mock/identities':
           return send(res, 200, IDENTITIES);
+        case 'GET /__mock/mail':
+          return send(
+            res,
+            200,
+            backend.state.mail.map(({ to, subject, body: text }) => ({ to, subject, body: text })),
+          );
         case 'POST /__mock/reminders':
           backend.sendReminders();
           return send(res, 200, { ok: true });

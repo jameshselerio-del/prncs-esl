@@ -19,6 +19,8 @@ export type MeResult =
       registered: true;
       user: User;
       settings: Settings;
+      /** The username for password sign-in, or null if the user only signs in with Google. */
+      username: string | null;
     }
   | {
       registered: false;
@@ -68,6 +70,18 @@ export interface UpdateBookingPayload extends BookingDetails {
   status?: Extract<BookingStatus, 'COMPLETED' | 'NO_SHOW'>;
 }
 
+export interface SetPasswordPayload {
+  username: string;
+  /** Required when the account already has a password. */
+  currentPassword: string;
+  newPassword: string;
+}
+
+/** A signed session for password sign-in; the SPA sends it in place of a Google ID token. */
+export interface SessionToken {
+  token: string;
+}
+
 export type LessonInput = Pick<Lesson, 'title' | 'level' | 'summary' | 'content' | 'materialsUrl'> & {
   /** Omit to create a new lesson. */
   id?: string;
@@ -77,12 +91,19 @@ type Empty = Record<string, never>;
 
 /** action name → [payload, result] */
 export interface Api {
+  // Signed out: password sign-in and reset (no token needed)
+  signInWithPassword: [{ login: string; password: string }, SessionToken];
+  requestPasswordReset: [{ login: string }, { sent: true }];
+  resetPassword: [{ login: string; code: string; newPassword: string }, SessionToken];
+
   // Anyone signed in with Google (including not-yet-registered students)
   me: [Empty, MeResult];
   register: [Profile, User];
 
   // Students and teacher
   updateProfile: [Profile, User];
+  /** Sets or changes the username and password; returns a fresh session (older ones stop working). */
+  setPassword: [SetPasswordPayload, SessionToken & { username: string }];
   lessons: [Empty, Lesson[]];
   availability: [Empty, Slot[]];
   myBookings: [Empty, StudentBooking[]];
@@ -105,6 +126,9 @@ export interface Api {
 
 export type Action = keyof Api;
 
+/** Actions that need no token: they sign the user in. */
+export const SIGNED_OUT_ACTIONS: readonly Action[] = ['signInWithPassword', 'requestPasswordReset', 'resetPassword'];
+
 /** Actions an unregistered (new) Google user may call. */
 export const PUBLIC_ACTIONS: readonly Action[] = ['me', 'register'];
 
@@ -125,6 +149,7 @@ export const ADMIN_ACTIONS: readonly Action[] = [
 
 export interface ApiEnvelope<A extends Action = Action> {
   action: A;
+  /** A Google ID token, or a password session token (`pw.…`). Empty for SIGNED_OUT_ACTIONS. */
   idToken: string;
   payload: Api[A][0];
 }

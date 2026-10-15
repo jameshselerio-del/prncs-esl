@@ -1,20 +1,37 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { SignInLayout } from './brand';
+import { PasswordSignIn } from './components/PasswordSignIn';
 import { MockIdentityBar, MockSignIn } from './MockIdentity';
 
 const TOKEN_KEY = 'idToken';
+/** Password sessions from the backend start with this; anything else is a Google ID token. */
+const PASSWORD_SESSION_PREFIX = 'pw.';
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 export const APP_NAME = (import.meta.env.VITE_APP_NAME as string | undefined) || 'Komorebi English';
 /** `npm run dev:mock`: talk to the local mock API with test identities instead of Google. */
 const MOCK = import.meta.env.MODE === 'mock';
 
 interface AuthContextValue {
+  /** A Google ID token, or a password session token (`pw.…`). */
   idToken: string | null;
+  /** True when signed in with a username and password rather than Google. */
+  passwordSession: boolean;
+  /** Swaps in a new token for the same user (after a password change) without reloading the app. */
+  replaceToken: (token: string) => void;
   /** `notice` is shown on the sign-in screen, e.g. why the session ended. */
   signOut: (notice?: string) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function storeToken(token: string | null): void {
+  try {
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // Storage may be unavailable (private mode); the in-memory state is used regardless.
+  }
+}
 
 function readToken(): string | null {
   try {
@@ -26,34 +43,35 @@ function readToken(): string | null {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [idToken, setIdToken] = useState<string | null>(readToken);
+  // Bumped on every sign-in (not on replaceToken), so a new identity starts from a clean slate.
+  const [signIns, setSignIns] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
 
   const signOut = useCallback((reason?: string) => {
-    try {
-      sessionStorage.removeItem(TOKEN_KEY);
-    } catch {
-      // Storage may be unavailable (private mode); the in-memory state is cleared regardless.
-    }
+    storeToken(null);
     window.google?.accounts.id.disableAutoSelect();
     setNotice(reason ?? null);
     setIdToken(null);
   }, []);
 
   const signIn = useCallback((token: string) => {
-    try {
-      sessionStorage.setItem(TOKEN_KEY, token);
-    } catch {
-      // See signOut.
-    }
+    storeToken(token);
+    setSignIns((n) => n + 1);
     setIdToken(token);
   }, []);
 
+  const replaceToken = useCallback((token: string) => {
+    storeToken(token);
+    setIdToken(token);
+  }, []);
+
+  const passwordSession = idToken?.startsWith(PASSWORD_SESSION_PREFIX) ?? false;
+
   return (
-    <AuthContext.Provider value={{ idToken, signOut }}>
+    <AuthContext.Provider value={{ idToken, passwordSession, replaceToken, signOut }}>
       {idToken ? (
         <>
-          {/* Keyed so switching identity starts from a clean slate. */}
-          <Fragment key={idToken}>{children}</Fragment>
+          <Fragment key={signIns}>{children}</Fragment>
           {MOCK && <MockIdentityBar token={idToken} onSwitch={signIn} />}
         </>
       ) : MOCK ? (
@@ -101,10 +119,21 @@ function SignIn({ onSignIn, notice }: { onSignIn: (token: string) => void; notic
 
   return (
     <SignInLayout>
-      <p>Sign in with your Google account to book and manage your lessons.</p>
+      <p>Sign in to book and manage your lessons.</p>
       {notice && <p className="notice">{notice}</p>}
       <div ref={buttonRef} />
       {error && <p className="error">{error}</p>}
+      <OrDivider />
+      <PasswordSignIn onSignIn={onSignIn} />
+      <p className="hint">New here? Sign up with Google, then add a username and password on your Profile page.</p>
     </SignInLayout>
+  );
+}
+
+export function OrDivider() {
+  return (
+    <p className="or-divider" aria-hidden="true">
+      <span>or</span>
+    </p>
   );
 }
