@@ -4,6 +4,7 @@ import {
   canStudentCancel,
   canTeacherCancel,
   checkNewBooking,
+  checkTeacherBooking,
   generateSlots,
   type ScheduleContext,
 } from '../../shared/slots';
@@ -236,6 +237,47 @@ export const handlers: { [A in Action]: Handler<A> } = {
     const student = users.find((u) => u.email === cancelled.studentEmail);
     if (student) notify.cancelled(cancelled, student, teacherOf(users), isTeacher, settings);
     return isTeacher ? cancelled : studentView(cancelled);
+  },
+
+  bookForStudent(ctx, payload) {
+    const email = text(payload, 'studentEmail', 200, true).trim().toLowerCase();
+    const start = text(payload, 'start', 40, true);
+    const topic = text(payload, 'topic', 200).trim();
+    const studentNote = text(payload, 'studentNote', 1000).trim();
+
+    const { booking, student, settings } = withLock(() => {
+      const users = db.users();
+      const student = users.find((u) => u.email === email);
+      if (!student || student.role !== 'STUDENT') throw new ApiError('Student not found.');
+      if (!student.active) throw new ApiError(`${student.name} is deactivated. Reactivate them first.`);
+      const settings = db.settings();
+      const result = checkTeacherBooking(db.bookings(), start, settings, ctx.now);
+      if (!result.slot) throw new ApiError(result.errors.join('\n'));
+      const created: Booking = {
+        id: Utilities.getUuid(),
+        studentEmail: student.email,
+        start: result.slot.start,
+        end: result.slot.end,
+        status: 'CONFIRMED',
+        lessonId: null,
+        topic,
+        studentNote,
+        meetingLink: settings.defaultMeetingLink,
+        materials: '',
+        feedback: '',
+        privateNote: '',
+        createdAt: ctx.now.toISOString(),
+        cancelledAt: null,
+        cancelledBy: null,
+        cancelReason: '',
+        reminderSentAt: null,
+      };
+      db.insertBooking(created);
+      return { booking: created, student, settings };
+    });
+
+    notify.booked(booking, student, undefined, settings, true);
+    return teacherView(booking, [student]);
   },
 
   allBookings() {

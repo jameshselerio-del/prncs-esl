@@ -6,6 +6,7 @@ import { ErrorText } from '../../components/Bits';
 import { BookingViews, useBookingView, ViewSwitcher } from '../../components/BookingViews';
 import { useSession } from '../../session';
 import { fmtDate, fmtTime, localDateKey } from '../../time';
+import { BookForStudent } from './BookForStudent';
 import { BookingEditor } from './BookingEditor';
 
 type Filter = 'upcoming' | 'past' | 'cancelled' | 'all';
@@ -27,6 +28,7 @@ export function TeacherBookings() {
   const [filter, setFilter] = useState<Filter>('upcoming');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [booking, setBooking] = useState(false);
   const lessonMap = useMemo(() => new Map((lessons.data ?? []).map((l) => [l.id, l])), [lessons.data]);
 
   const t = now;
@@ -73,7 +75,12 @@ export function TeacherBookings() {
 
   return (
     <>
-      <h2>Bookings</h2>
+      <div className="toolbar">
+        <h2>Bookings</h2>
+        <button type="button" className="primary" onClick={() => setBooking(true)}>
+          Book for a student
+        </button>
+      </div>
       <section className="cards">
         <div className="card">
           <span className="label">Today</span>
@@ -139,6 +146,7 @@ export function TeacherBookings() {
         />
       )}
 
+      {booking && <BookForStudent onClose={() => setBooking(false)} onBooked={bookings.reload} />}
       {selected && (
         <BookingEditor
           key={selected.id}

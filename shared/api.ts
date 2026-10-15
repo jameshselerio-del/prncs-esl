@@ -55,6 +55,13 @@ export interface BookPayload {
   studentNote: string;
 }
 
+export interface BookForStudentPayload {
+  studentEmail: string;
+  start: IsoInstant;
+  topic: string;
+  studentNote: string;
+}
+
 export interface UpdateBookingPayload extends BookingDetails {
   id: string;
   /** Only COMPLETED / NO_SHOW are accepted here; cancelling has its own action. */
@@ -84,6 +91,7 @@ export interface Api {
 
   // Teacher only
   allBookings: [Empty, TeacherBooking[]];
+  bookForStudent: [BookForStudentPayload, TeacherBooking];
   updateBooking: [UpdateBookingPayload, TeacherBooking];
   students: [Empty, StudentSummary[]];
   setStudentActive: [{ email: string; active: boolean }, User];
@@ -103,6 +111,7 @@ export const PUBLIC_ACTIONS: readonly Action[] = ['me', 'register'];
 /** Actions only the teacher may call. */
 export const ADMIN_ACTIONS: readonly Action[] = [
   'allBookings',
+  'bookForStudent',
   'updateBooking',
   'students',
   'setStudentActive',

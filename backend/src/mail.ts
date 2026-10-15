@@ -26,20 +26,23 @@ function send(to: string, subject: string, lines: string[], settings: Settings):
 }
 
 export const notify = {
-  booked(b: Booking, student: User, teacher: User | undefined, settings: Settings): void {
+  /** `byTeacher`: the teacher booked it for the student, so only the student is told. */
+  booked(b: Booking, student: User, teacher: User | undefined, settings: Settings, byTeacher = false): void {
     send(
       student.email,
-      'Your class is booked',
+      byTeacher ? 'Your teacher booked a class for you' : 'Your class is booked',
       [
         `Hi ${student.name},`,
         '',
-        `Your class is confirmed for ${when(b, student.timeZone)}.`,
+        byTeacher
+          ? `Your teacher booked a class for you on ${when(b, student.timeZone)}.`
+          : `Your class is confirmed for ${when(b, student.timeZone)}.`,
         b.meetingLink ? `Meeting link: ${b.meetingLink}` : 'The meeting link will appear in the app before class.',
         `You can cancel up to ${settings.cancelNoticeHours} hours before the class.`,
       ],
       settings,
     );
-    if (teacher) {
+    if (teacher && !byTeacher) {
       send(
         teacher.email,
         `New booking: ${student.name}`,

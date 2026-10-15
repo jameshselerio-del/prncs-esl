@@ -86,6 +86,26 @@ export function checkNewBooking(
   return slot && errors.length === 0 ? { slot, errors: [] } : { slot: null, errors };
 }
 
+/**
+ * A booking the teacher makes for a student: any future start that doesn't overlap an active
+ * booking. Availability, notice, booking window and the per-student limit don't apply, since
+ * the teacher is arranging the time directly.
+ */
+export function checkTeacherBooking(
+  bookings: Booking[],
+  start: IsoInstant,
+  settings: Settings,
+  now: Date,
+): { slot: Slot; errors: [] } | { slot: null; errors: string[] } {
+  const startMs = Date.parse(start);
+  if (!Number.isFinite(startMs)) return { slot: null, errors: ['Choose a valid date and time.'] };
+  if (startMs <= now.getTime()) return { slot: null, errors: ['The class must start in the future.'] };
+  const endMs = startMs + settings.lessonMinutes * MINUTE_MS;
+  const clash = bookings.find((b) => occupies(b) && overlaps(startMs, endMs, Date.parse(b.start), Date.parse(b.end)));
+  if (clash) return { slot: null, errors: ['That time overlaps another booked class.'] };
+  return { slot: { start: new Date(startMs).toISOString(), end: new Date(endMs).toISOString() }, errors: [] };
+}
+
 /** The fields the cancel/outcome rules need, so student views (without private notes) qualify. */
 type Timed = Pick<Booking, 'status' | 'start'>;
 
