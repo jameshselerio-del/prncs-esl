@@ -1,6 +1,7 @@
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { useQuery } from './api';
 import { useAuth } from './auth';
+import { ImportUsers } from './pages/admin/ImportUsers';
 import { Users } from './pages/admin/Users';
 import { Approvals } from './pages/Approvals';
 import { Dashboard } from './pages/Dashboard';
@@ -40,6 +41,7 @@ export function App() {
           <Route path="/new" element={<NewRequest me={me.data} onCreated={me.reload} />} />
           {me.data.isApprover && <Route path="/approvals" element={<Approvals />} />}
           {isAdmin && <Route path="/admin/users" element={<Users />} />}
+          {isAdmin && <Route path="/admin/users/import" element={<ImportUsers />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

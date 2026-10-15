@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { UserRecord } from '../../../../shared/api';
 import { WEEKDAY_NAMES } from '../../../../shared/users';
 import { useQuery } from '../../api';
@@ -25,9 +26,14 @@ export function Users() {
     <>
       <div className="toolbar">
         <h2>Users</h2>
-        <button type="button" className="primary" onClick={() => setEditing({ record: NEW_USER, isNew: true })}>
-          Add user
-        </button>
+        <div className="actions">
+          <Link to="/admin/users/import" className="button">
+            Import CSV
+          </Link>
+          <button type="button" className="primary" onClick={() => setEditing({ record: NEW_USER, isNew: true })}>
+            Add user
+          </button>
+        </div>
       </div>
 
       {editing && (
