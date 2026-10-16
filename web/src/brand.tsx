@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { LegalLinks } from './components/LegalLinks';
 
 /** Komorebi English brand copy (see the brand identity canvas). */
@@ -130,5 +130,60 @@ export function SiteFooter() {
         <LegalLinks />
       </span>
     </footer>
+  );
+}
+
+/** After this long, the loading screen explains the wait (Apps Script can take a while to start). */
+const SLOW_LOAD_MS = 6000;
+
+/**
+ * Full-page screen while the app loads after sign-in: the leaf mark swaying in dappled light
+ * (komorebi, sunlight through leaves), the wordmark and a bilingual message.
+ */
+export function LoadingScreen() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSlow(true), SLOW_LOAD_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="loading-screen">
+      <LeafShape className="signin-leaf top" />
+      <LeafShape className="signin-leaf bottom" color="var(--bark)" />
+      <main className="loading-main" role="status" aria-live="polite">
+        <div className="loading-mark" aria-hidden="true">
+          <span className="loading-light" />
+          <span className="loading-light second" />
+          <LeafMark size={104} className="loading-leaf" />
+        </div>
+        <div className="loading-word" aria-hidden="true">
+          <span className="name">{BRAND.wordmark}</span>
+          <span className="sub">{BRAND.sub}</span>
+        </div>
+        <p className="loading-message">
+          Getting your lessons ready
+          <span className="loading-dots" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+          <span className="ja" lang="ja">
+            準備しています
+          </span>
+        </p>
+        {slow && <p className="hint loading-slow">Still loading. The first visit of the day can take a few seconds.</p>}
+      </main>
+    </div>
+  );
+}
+
+/** Small inline loader for a section of a page, in the same style. */
+export function Loading({ label = 'Loading…' }: { label?: string }) {
+  return (
+    <p className="loading-inline" role="status">
+      <LeafMark size={20} className="loading-leaf" />
+      <span>{label}</span>
+    </p>
   );
 }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openAs, resetData, TEACHER, YUKI } from './helpers';
+import { API_URL, openAs, resetData, TEACHER, YUKI } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await resetData(page);
@@ -63,4 +63,19 @@ test('every page has the footer with the legal links', async ({ page }) => {
   await expect(footer.getByRole('link', { name: 'Privacy Policy' })).toBeVisible();
   await expect(footer).toContainText('Komorebi English');
   await signedIn.close();
+});
+
+test('a branded loading screen shows while the account loads', async ({ page }) => {
+  // Hold the first `me` request so the loading screen stays up long enough to check.
+  await page.route(`${API_URL}/`, async (route) => {
+    if (route.request().postData()?.includes('"action":"me"')) await new Promise((r) => setTimeout(r, 1500));
+    await route.continue();
+  });
+  await page.addInitScript((t) => sessionStorage.setItem('idToken', t), YUKI);
+  await page.goto('/');
+  const status = page.getByRole('status').filter({ hasText: 'Getting your lessons ready' });
+  await expect(status).toBeVisible();
+  await expect(status).toContainText('準備しています');
+  await expect(page.getByRole('heading', { name: 'Hi, Yuki' })).toBeVisible();
+  await expect(status).toBeHidden();
 });

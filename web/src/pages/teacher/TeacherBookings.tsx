@@ -8,6 +8,7 @@ import { useSession } from '../../session';
 import { fmtDate, fmtTime, localDateKey } from '../../time';
 import { BookForStudent } from './BookForStudent';
 import { BookingEditor } from './BookingEditor';
+import { Loading } from '../../brand';
 
 type Filter = 'upcoming' | 'past' | 'cancelled' | 'all';
 const FILTERS: { id: Filter; label: string }[] = [
@@ -133,7 +134,7 @@ export function TeacherBookings() {
 
       <ErrorText error={bookings.error} />
       {!bookings.data ? (
-        <p>Loading…</p>
+        <Loading />
       ) : (
         <BookingViews
           view={view}

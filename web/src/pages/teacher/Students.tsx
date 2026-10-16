@@ -6,6 +6,7 @@ import { ErrorText } from '../../components/Bits';
 import { Modal } from '../../components/Modal';
 import { useSession } from '../../session';
 import { fmtDate } from '../../time';
+import { Loading } from '../../brand';
 
 export function Students() {
   const students = useQuery('students');
@@ -37,7 +38,7 @@ export function Students() {
       </div>
       <ErrorText error={students.error} />
       {!students.data ? (
-        <p>Loading…</p>
+        <Loading />
       ) : students.data.length === 0 ? (
         <p className="empty">No students yet. They appear here after signing in for the first time.</p>
       ) : (
