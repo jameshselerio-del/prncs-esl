@@ -7,6 +7,7 @@ import { useApi, useQuery } from '../../api';
 import { ErrorText } from '../../components/Bits';
 import { useSession } from '../../session';
 import { localDateKey } from '../../time';
+import { Loading } from '../../brand';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 type Range = Omit<AvailabilityRule, 'id'>;
@@ -24,7 +25,7 @@ export function Availability() {
   const schedule = useQuery('schedule');
   const bookings = useQuery('allBookings');
   if (schedule.error) return <ErrorText error={schedule.error} />;
-  if (!schedule.data) return <p>Loading…</p>;
+  if (!schedule.data) return <Loading />;
   return <AvailabilityEditor initial={schedule.data} bookings={bookings.data ?? []} />;
 }
 

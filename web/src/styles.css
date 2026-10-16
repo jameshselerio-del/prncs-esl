@@ -1703,6 +1703,177 @@ button.link.danger-text {
   white-space: nowrap;
 }
 
+/* ---------- Loading ---------- */
+
+.loading-screen {
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+.loading-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 48px 20px;
+  text-align: center;
+}
+
+.loading-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 180px;
+  height: 180px;
+}
+
+/* Soft patches of light drifting behind the leaf. */
+.loading-light {
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, var(--accent-soft) 0%, transparent 70%);
+  animation: loading-dapple 3.2s ease-in-out infinite;
+}
+
+.loading-light.second {
+  inset: 34px 6px 2px 40px;
+  background: radial-gradient(circle at 60% 60%, var(--bark-soft) 0%, transparent 70%);
+  animation-delay: -1.6s;
+}
+
+.loading-mark .loading-leaf {
+  position: relative;
+  transform-origin: 15% 85%;
+  animation: loading-sway 2.8s ease-in-out infinite;
+}
+
+.loading-word {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.loading-word .name {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.loading-word .sub {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  letter-spacing: 0.42em;
+  color: var(--accent);
+}
+
+.loading-message {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px 10px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.loading-message .ja {
+  flex-basis: 100%;
+  color: var(--pebble-text);
+  font-size: 0.95rem;
+}
+
+.loading-dots {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: -6px;
+}
+
+.loading-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sage);
+  animation: loading-dot 1.2s ease-in-out infinite;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.loading-slow {
+  max-width: 320px;
+  margin: 0;
+}
+
+.loading-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.loading-inline .loading-leaf {
+  flex: none;
+  transform-origin: 15% 85%;
+  animation: loading-sway 2.8s ease-in-out infinite;
+}
+
+@keyframes loading-sway {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(7deg);
+  }
+}
+
+@keyframes loading-dapple {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translate(-6px, 4px) scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(6px, -4px) scale(1.06);
+  }
+}
+
+@keyframes loading-dot {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-light,
+  .loading-leaf,
+  .loading-dots span {
+    animation: none !important;
+  }
+}
+
 /* ---------- Dev-only identity switcher (npm run dev:mock) ---------- */
 
 .mock-identities {

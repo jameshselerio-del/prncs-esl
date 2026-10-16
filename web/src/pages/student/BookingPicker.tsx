@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import type { StudentBooking } from '../../../../shared/api';
 import type { Slot } from '../../../../shared/types';
 import { useApi, useQuery } from '../../api';
-import { Bilingual } from '../../brand';
+import { Bilingual, Loading } from '../../brand';
 import { ErrorText } from '../../components/Bits';
 import { Modal } from '../../components/Modal';
 import { useSession } from '../../session';
@@ -67,7 +67,7 @@ export function BookingPicker({ upcoming, onBooked }: Props) {
       <ErrorText error={slots.error} />
 
       {!slots.data ? (
-        <p>Loading availability…</p>
+        <Loading label="Loading open times…" />
       ) : days.length === 0 ? (
         <p className="empty">No open times in the next {settings.bookingWindowDays} days. Please check back later.</p>
       ) : (

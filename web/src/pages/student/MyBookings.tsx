@@ -5,7 +5,7 @@ import { useQuery } from '../../api';
 import { ErrorText } from '../../components/Bits';
 import { BookingViews, useBookingView, ViewSwitcher } from '../../components/BookingViews';
 import { useSession } from '../../session';
-import { Bilingual } from '../../brand';
+import { Bilingual, Loading } from '../../brand';
 import { BookingDetail } from './BookingDetail';
 
 type Filter = 'upcoming' | 'past' | 'cancelled' | 'all';
@@ -66,7 +66,7 @@ export function MyBookings() {
       </div>
       <ErrorText error={bookings.error} />
       {!bookings.data ? (
-        <p>Loading…</p>
+        <Loading />
       ) : (
         <BookingViews
           view={view}

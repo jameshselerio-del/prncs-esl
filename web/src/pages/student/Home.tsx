@@ -5,7 +5,7 @@ import { useQuery } from '../../api';
 import { ErrorText, ExternalLink, LessonCard, RichText, StatusBadge } from '../../components/Bits';
 import { useSession } from '../../session';
 import { fmtDate, fmtRange, fmtTime, relative } from '../../time';
-import { Bilingual, LeafShape } from '../../brand';
+import { Bilingual, LeafShape, Loading } from '../../brand';
 import { BookingDetail } from './BookingDetail';
 
 /** Upcoming classes listed in the Home summary; the rest are a click away in My bookings. */
@@ -43,7 +43,7 @@ export function Home() {
           <LeafShape className="hero-leaf" />
           <span className="label">Next class</span>
           {!bookings.data ? (
-            <p>Loading…</p>
+            <Loading />
           ) : next ? (
             <>
               <h3>{nextLesson?.title || next.topic || 'English class'}</h3>
@@ -161,7 +161,7 @@ export function Home() {
       <section>
         <h3>Lessons</h3>
         {!lessons.data ? (
-          <p>Loading…</p>
+          <Loading />
         ) : lessons.data.length === 0 ? (
           <p className="hint">Your teacher hasn't published any lessons yet.</p>
         ) : (

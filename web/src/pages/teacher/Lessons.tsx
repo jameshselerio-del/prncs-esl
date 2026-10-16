@@ -5,6 +5,7 @@ import { LEVELS, lessonErrors } from '../../../../shared/validation';
 import { useApi, useQuery } from '../../api';
 import { ErrorText, LessonCard } from '../../components/Bits';
 import { Modal } from '../../components/Modal';
+import { Loading } from '../../brand';
 
 const EMPTY: LessonInput = { title: '', level: '', summary: '', content: '', materialsUrl: '' };
 
@@ -26,7 +27,7 @@ export function Lessons() {
       </p>
       <ErrorText error={lessons.error} />
       {!lessons.data ? (
-        <p>Loading…</p>
+        <Loading />
       ) : lessons.data.length === 0 ? (
         <p className="empty">No lessons yet.</p>
       ) : (

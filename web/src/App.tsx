@@ -3,7 +3,7 @@ import { HashRouter, Link, NavLink, Navigate, Route, Routes } from 'react-router
 import type { MeResult } from '../../shared/api';
 import { useApi, useQuery } from './api';
 import { APP_NAME, useAuth } from './auth';
-import { BRAND, Logo, SiteFooter } from './brand';
+import { BRAND, LoadingScreen, Logo, SiteFooter } from './brand';
 import { ErrorText } from './components/Bits';
 import { AccountMenu } from './components/AccountMenu';
 import { PrivacyLink, TermsLink } from './components/LegalLinks';
@@ -41,7 +41,7 @@ export function App() {
   }, []);
 
   if (me.error) return <ErrorText error={me.error} />;
-  if (!me.data) return <p className="page">Loading…</p>;
+  if (!me.data) return <LoadingScreen />;
   if (!me.data.registered) return <Register me={me.data} onDone={me.reload} />;
 
   const session: Session = {
