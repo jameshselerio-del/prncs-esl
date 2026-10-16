@@ -62,8 +62,11 @@ Students can sign up without Google, or add a password to a Google account.
   until `completeSignUp` uses the code, which creates the `Logins` row and
   returns a session. The new user is then unregistered (no `Users` row) and
   completes their profile with `register`, exactly like a new Google user. If
-  the email already has an account, the visitor gets the same response and the
-  account owner is emailed instead.
+  the email already has a `Users` row but no password (a Google user, or a row
+  the teacher added in the Sheet), the code links the login to that account
+  and the user goes straight to Home. If the email already has a password, the
+  visitor gets the same response and the owner is emailed instead; deactivated
+  users get nothing.
 - **Add or change a password:** `setPassword` on the Profile page (changing it
   needs the current password).
 - `signInWithPassword`, `requestPasswordReset`, `resetPassword`,

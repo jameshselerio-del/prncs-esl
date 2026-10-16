@@ -206,8 +206,8 @@ export const notify = {
       [
         'Hi,',
         '',
-        'Someone (probably you) tried to create a new account with this email address, but it already has one.',
-        'Sign in with Google, or use "Forgot password?" on the sign-in page if you set a password.',
+        'Someone (probably you) tried to create an account with this email address, but it already has a username and password.',
+        'Sign in with them, or use "Forgot password?" on the sign-in page.',
         "If this wasn't you, you can ignore this email.",
       ],
       settings,

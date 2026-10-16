@@ -18,7 +18,9 @@ see their lessons and manage their profile.
 - **Username and password:** visitors can also sign up with an email, username
   and password; a code emailed to the address confirms it before the account is
   created, then they complete the same profile. Google users can add a username
-  and password on their Profile page and sign in either way. Passwords can be
+  and password on their Profile page (or through sign-up) and sign in either
+  way. The teacher can also add a student as a row in the Users tab; that
+  student then signs up with the same email to set their username and password. Passwords can be
   changed (with the current one) and a forgotten one reset with an emailed code.
 - The teacher is the Users row with role `ADMIN`. The teacher can deactivate a
   student, which blocks sign-in and booking.
