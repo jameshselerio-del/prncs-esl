@@ -605,13 +605,42 @@ describe('password sign-up', () => {
     expect(mailTo('kenji@example.com').at(-1).body).toMatch(/^Hi,\n/);
   });
 
-  it('does not reveal existing accounts, and emails their owner instead', () => {
+  it('does not reveal accounts that have a password, and emails their owner instead', () => {
+    ok(yuki, 'setPassword', { username: 'yuki.t', currentPassword: '', newPassword: 'green tea 123' });
     const res = signedOut('requestSignUp', { ...NEW, email: 'yuki@example.com', username: 'newyuki' });
     expect(res).toEqual({ ok: true, data: { sent: true } });
     const email = mailTo('yuki@example.com').at(-1);
     expect(email.subject).toContain('already have an account');
     expect(email.body).not.toMatch(/\d{6}/);
-    expect(backend.sheet('Logins').records()).toEqual([]);
+    expect(
+      backend
+        .sheet('Logins')
+        .records()
+        .map((l) => l.username),
+    ).toEqual(['yuki.t']);
+  });
+
+  it('lets a user the teacher added in the Sheet sign up into that account', () => {
+    backend.insert('Users', [
+      { email: 'hana@example.com', name: 'Hana Ito', role: 'STUDENT', active: 'TRUE', timeZone: 'Asia/Tokyo' },
+    ]);
+    signedOut('requestSignUp', { email: 'Hana@example.com', username: 'hana', password: 'cherry tree 1' });
+    const code = codeFrom('hana@example.com');
+    const { token } = signedOut('completeSignUp', { email: 'hana@example.com', code }).data;
+    expect(ok(token, 'me')).toMatchObject({ registered: true, user: { name: 'Hana Ito' }, username: 'hana' });
+  });
+
+  it('lets a Google user without a password sign up to add one', () => {
+    signedOut('requestSignUp', { ...NEW, email: 'yuki@example.com', username: 'yuki' });
+    const code = codeFrom('yuki@example.com');
+    const { token } = signedOut('completeSignUp', { email: 'yuki@example.com', code }).data;
+    expect(ok(token, 'me')).toMatchObject({ registered: true, user: { name: 'Yuki Tanaka' }, username: 'yuki' });
+  });
+
+  it('sends nothing to deactivated users', () => {
+    ok(teacher, 'setStudentActive', { email: 'minh@example.com', active: false });
+    expect(signedOut('requestSignUp', { ...NEW, email: 'minh@example.com', username: 'minh' }).ok).toBe(true);
+    expect(mailTo('minh@example.com').filter((m) => /code|account/.test(m.subject))).toEqual([]);
   });
 
   it('validates details, refuses taken usernames and limits codes to one a minute', () => {

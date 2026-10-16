@@ -239,9 +239,14 @@ export const handlers: { [A in Action]: Handler<A> } = {
     if (logins.some((l) => l.username === username && l.email !== email)) throw new ApiError(USERNAME_TAKEN);
     if (codeRecentlySent('signup', email, ctx.now)) return { sent: true as const };
 
-    // Same answer whether or not the email has an account; the owner is told by email instead.
+    // Same answer whatever the email's state; the owner learns the rest by email.
+    // A Users row without a password (a Google user, or one the teacher added in the Sheet) may
+    // sign up: the code proves they own the email, and they land in that existing account.
     const settings = db.settings();
-    if (logins.some((l) => l.email === email) || db.users().some((u) => u.email === email)) {
+    const user = db.users().find((u) => u.email === email);
+    if (user && !user.active) {
+      // Deactivated: nothing to send; the teacher has to reactivate them first.
+    } else if (logins.some((l) => l.email === email)) {
       issueCode('signup', email, ctx.now, null);
       notify.alreadyRegistered(email, settings);
     } else {
