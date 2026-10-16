@@ -83,6 +83,22 @@ Calendar files use a stable UID per booking, so a cancellation removes the
 event that the original invite added. Changes made later in the app (for
 example a new meeting link) are not re-sent as calendar updates.
 
+## Notifications (in the app)
+
+A bell beside the account menu shows an unread count and a panel with:
+
+- **Updates** (kept 30 days, read/unread, "Mark all as read"): for students,
+  the teacher booked or cancelled their class, added feedback, or added a new
+  meeting link to an upcoming class; for the teacher, a student booked or
+  cancelled. Clicking one opens My bookings (student) or Bookings (teacher).
+- **To do** (worked out each time, never stored): a class starting within 15
+  minutes (with a Join link), past classes the teacher hasn't marked
+  completed/no-show, and setup suggestions (username and password, English
+  level) that can be dismissed with "Not now".
+
+The server can't push to the page, so the bell refreshes on load, when the tab
+becomes visible again, when it is opened, and every 3 minutes.
+
 ## Non-functional
 
 - Static hosting (GitHub Pages); data in a Google Sheet in the teacher's Drive;

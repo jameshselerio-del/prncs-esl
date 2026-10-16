@@ -6,6 +6,7 @@ import { APP_NAME, useAuth } from './auth';
 import { BRAND, LoadingScreen, Logo, SiteFooter } from './brand';
 import { ErrorText } from './components/Bits';
 import { AccountMenu } from './components/AccountMenu';
+import { NotificationBell } from './components/NotificationBell';
 import { PrivacyLink, TermsLink } from './components/LegalLinks';
 import { ProfileForm } from './components/ProfileForm';
 import { Profile } from './pages/Profile';
@@ -68,7 +69,10 @@ export function App() {
               </NavLink>
             ))}
           </nav>
-          <AccountMenu />
+          <div className="topbar-actions">
+            <NotificationBell />
+            <AccountMenu />
+          </div>
         </header>
         <main className="page">
           <Routes>

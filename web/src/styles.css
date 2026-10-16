@@ -264,11 +264,206 @@ section {
   border-top: 0;
 }
 
+/* ---------- Notifications (bell) ---------- */
+
+.bell {
+  position: relative;
+}
+
+.bell-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.bell-button[aria-expanded='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.bell-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  border: 2px solid var(--surface);
+  background: var(--bark);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.bell-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 40;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 40px rgb(46 52 48 / 0.18);
+}
+
+.bell-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bell-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.bell-head button.link {
+  min-height: 0;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+.bell-section {
+  margin: 4px 0 6px;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.bell-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bell-item {
+  border-radius: var(--radius-sm);
+}
+
+.bell-item.todo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--accent-soft);
+}
+
+.bell-open {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 0;
+  padding: 10px 12px 10px 24px;
+  position: relative;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+  font-weight: 400;
+}
+
+.bell-open:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.bell-item.unread .bell-open::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 17px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.bell-item.unread .bell-title {
+  font-weight: 600;
+}
+
+.bell-title {
+  color: var(--text);
+}
+
+.bell-detail,
+.bell-time {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.bell-time {
+  font-size: 0.8rem;
+}
+
+.bell-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 4px;
+}
+
+.button.small {
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 0.875rem;
+}
+
+.bell-actions button.link {
+  min-height: 0;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+.bell-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 0 8px;
+  color: var(--muted);
+}
+
+.bell-empty p {
+  margin: 0;
+}
+
 /* ---------- Account menu ---------- */
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
 
 .account {
   position: relative;
-  margin-left: auto;
 }
 
 .account-button {
@@ -1911,6 +2106,15 @@ button.link.danger-text {
 
   .account-name {
     display: none;
+  }
+
+  /* Below the header, across the screen: the bell isn't at the right edge, so a right-aligned panel would overflow. */
+  .bell-panel {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 64px;
+    width: auto;
   }
 
   /* Logo and account share the first row; the menu wraps below. */

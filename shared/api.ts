@@ -1,3 +1,4 @@
+import type { Inbox } from './notifications';
 import type { BookingDetails } from './validation';
 import type {
   AvailabilityRule,
@@ -106,6 +107,12 @@ export interface Api {
 
   // Students and teacher
   updateProfile: [Profile, User];
+  /** The bell: recent notifications (newest first) and current to-do items. */
+  notifications: [Empty, Inbox];
+  /** Marks the given notifications, or all of them, as read. */
+  markNotificationsRead: [{ ids?: string[]; all?: boolean }, { updated: number }];
+  /** Hides a setup suggestion (see DISMISSIBLE_TODOS). */
+  dismissTodo: [{ id: string }, { id: string }];
   /** Sets or changes the username and password; returns a fresh session (older ones stop working). */
   setPassword: [SetPasswordPayload, SessionToken & { username: string }];
   lessons: [Empty, Lesson[]];

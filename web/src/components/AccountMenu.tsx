@@ -1,9 +1,10 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { levelLabel } from '../../../shared/validation';
 import { useAuth } from '../auth';
 import { useSession } from '../session';
 import { useTheme, type ThemeChoice } from '../theme';
+import { usePopover } from './usePopover';
 
 /** The Google profile picture from the ID token's payload (mock tokens have none). */
 function pictureFromToken(token: string | null): string | null {
@@ -57,31 +58,10 @@ export function AccountMenu() {
   const { user } = useSession();
   const { idToken, signOut } = useAuth();
   const [theme, setTheme] = useTheme();
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, rootRef, buttonRef } = usePopover();
   const panelId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
   const picture = pictureFromToken(idToken);
   const isTeacher = user.role === 'ADMIN';
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-        buttonRef.current?.focus();
-      }
-    };
-    document.addEventListener('pointerdown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
 
   return (
     <div className="account" ref={rootRef}>
