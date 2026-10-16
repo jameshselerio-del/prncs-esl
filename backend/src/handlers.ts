@@ -8,6 +8,13 @@ import {
   generateSlots,
   type ScheduleContext,
 } from '../../shared/slots';
+import {
+  DISMISSIBLE_TODOS,
+  NOTIFICATION_DAYS,
+  todosFor,
+  type AppNotification,
+  type NotificationKind,
+} from '../../shared/notifications';
 import { HOUR_MS } from '../../shared/time';
 import type { AvailabilityRule, Booking, Level, Profile, Settings, User, Weekday } from '../../shared/types';
 import {
@@ -25,7 +32,7 @@ import {
   usernameErrors,
 } from '../../shared/validation';
 import type { Identity } from './auth';
-import { db, type Login } from './db';
+import { db, type Login, type StoredNotification } from './db';
 import { ApiError } from './errors';
 import { notify } from './mail';
 import {
@@ -124,6 +131,33 @@ const teacherOf = (users: User[]): User | undefined => users.find((u) => u.role 
 function scheduleContext(now: Date): ScheduleContext {
   return { rules: db.rules(), timeOff: db.timeOff(), bookings: db.bookings(), settings: db.settings(), now };
 }
+
+/** Adds a bell notification for `email` about booking `b`. Call inside withLock, next to the matching email. */
+function addNotification(
+  email: string | undefined,
+  kind: NotificationKind,
+  b: Booking,
+  now: Date,
+  extra: { actorName?: string; detail?: string } = {},
+): void {
+  if (!email) return;
+  db.insertNotification({
+    id: Utilities.getUuid(),
+    email,
+    kind,
+    bookingId: b.id,
+    classStart: b.start,
+    actorName: extra.actorName ?? '',
+    detail: extra.detail ?? '',
+    createdAt: now.toISOString(),
+    readAt: null,
+  });
+}
+
+const notificationView = ({ email, readAt, ...rest }: StoredNotification): AppNotification => ({
+  ...rest,
+  read: readAt !== null,
+});
 
 function findBooking(id: string): Booking {
   const booking = db.bookings().find((b) => b.id === id);
@@ -330,6 +364,65 @@ export const handlers: { [A in Action]: Handler<A> } = {
     return { token: savePassword(me, username, newPassword, existing, ctx.now), username };
   },
 
+  notifications(ctx) {
+    const me = user(ctx);
+    const since = ctx.now.getTime() - NOTIFICATION_DAYS * 24 * HOUR_MS;
+    // Newest first; rows are appended in order, so reversing breaks ties within the same millisecond.
+    const notifications = db
+      .notifications()
+      .reverse()
+      .filter((n) => n.email === me.email && Date.parse(n.createdAt) >= since)
+      .sort((x, y) => y.createdAt.localeCompare(x.createdAt))
+      .slice(0, 50)
+      .map(notificationView);
+    const users = db.users();
+    const bookings =
+      me.role === 'ADMIN'
+        ? db.bookings().map((b) => teacherView(b, users))
+        : db.bookings().filter((b) => b.studentEmail === me.email);
+    const todos = todosFor({
+      user: me,
+      hasPassword: db.logins().some((l) => l.email === me.email),
+      bookings,
+      dismissed: db
+        .dismissals()
+        .filter((d) => d.email === me.email)
+        .map((d) => d.todo),
+      now: ctx.now,
+    });
+    return { notifications, todos };
+  },
+
+  markNotificationsRead(ctx, payload) {
+    const me = user(ctx);
+    const all = payload.all === true;
+    const ids = payload.ids ?? [];
+    if (!Array.isArray(ids) || ids.length > 100 || ids.some((id) => typeof id !== 'string' || id.length > 64)) {
+      throw new ApiError('Invalid ids.');
+    }
+    return withLock(() => {
+      let updated = 0;
+      const rows = db.notifications().map((n) => {
+        if (n.email !== me.email || n.readAt || !(all || ids.includes(n.id))) return n;
+        updated++;
+        return { ...n, readAt: ctx.now.toISOString() };
+      });
+      if (updated) db.replaceNotifications(rows);
+      return { updated };
+    });
+  },
+
+  dismissTodo(ctx, payload) {
+    const me = user(ctx);
+    const id = text(payload, 'id', 40, true);
+    if (!DISMISSIBLE_TODOS.includes(id)) throw new ApiError('This item cannot be dismissed.');
+    withLock(() => {
+      const done = db.dismissals().some((d) => d.email === me.email && d.todo === id);
+      if (!done) db.insertDismissal(me.email, id, ctx.now.toISOString());
+    });
+    return { id };
+  },
+
   lessons() {
     return db.lessons().sort((a, b) => a.title.localeCompare(b.title));
   },
@@ -381,7 +474,11 @@ export const handlers: { [A in Action]: Handler<A> } = {
       return { booking: created, settings: schedule.settings };
     });
 
-    notify.booked(booking, me, teacherOf(db.users()), settings);
+    const teacher = teacherOf(db.users());
+    withLock(() =>
+      addNotification(teacher?.email, 'NEW_BOOKING', booking, ctx.now, { actorName: me.name, detail: booking.topic }),
+    );
+    notify.booked(booking, me, teacher, settings);
     return studentView(booking);
   },
 
@@ -418,6 +515,14 @@ export const handlers: { [A in Action]: Handler<A> } = {
 
     const users = db.users();
     const student = users.find((u) => u.email === cancelled.studentEmail);
+    withLock(() =>
+      isTeacher
+        ? addNotification(cancelled.studentEmail, 'CANCELLED_BY_TEACHER', cancelled, ctx.now, { detail: reason })
+        : addNotification(teacherOf(users)?.email, 'CANCELLED_BY_STUDENT', cancelled, ctx.now, {
+            actorName: me.name,
+            detail: reason,
+          }),
+    );
     if (student) notify.cancelled(cancelled, student, teacherOf(users), isTeacher, settings);
     return isTeacher ? cancelled : studentView(cancelled);
   },
@@ -456,6 +561,7 @@ export const handlers: { [A in Action]: Handler<A> } = {
         reminderSentAt: null,
       };
       db.insertBooking(created);
+      addNotification(student.email, 'BOOKED_FOR_YOU', created, ctx.now, { detail: topic });
       return { booking: created, student, settings };
     });
 
@@ -491,6 +597,13 @@ export const handlers: { [A in Action]: Handler<A> } = {
       }
       const updated: Booking = { ...booking, ...details, status: status ?? booking.status };
       db.updateBooking(updated);
+      if (updated.feedback && updated.feedback !== booking.feedback) {
+        addNotification(updated.studentEmail, 'FEEDBACK_ADDED', updated, ctx.now);
+      }
+      const upcoming = updated.status === 'CONFIRMED' && Date.parse(updated.start) > ctx.now.getTime();
+      if (upcoming && updated.meetingLink && updated.meetingLink !== booking.meetingLink) {
+        addNotification(updated.studentEmail, 'LINK_ADDED', updated, ctx.now);
+      }
       return teacherView(updated, db.users());
     });
   },
@@ -627,5 +740,9 @@ export function sendReminders(): void {
       if (student?.active) notify.reminder(b, student, settings);
       db.updateBooking({ ...b, reminderSentAt: new Date(now).toISOString() });
     }
+    // Keep the Notifications tab small: drop what the bell no longer shows.
+    const notifications = db.notifications();
+    const keep = notifications.filter((n) => Date.parse(n.createdAt) >= now - NOTIFICATION_DAYS * 24 * HOUR_MS);
+    if (keep.length < notifications.length) db.replaceNotifications(keep);
   });
 }

@@ -89,15 +89,17 @@ Students can sign up without Google, or add a password to a Google account.
 
 ## Sheet schema (one tab per table)
 
-| Tab            | Columns                                                                                                                                                                                                                                |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Users`        | email, name, role (ADMIN/STUDENT), active, timeZone, level, nativeLanguage, goals, contact, createdAt                                                                                                                                  |
-| `Availability` | id, weekday (0=Sun…6=Sat), start (HH:MM), end (HH:MM) — teacher's weekly hours in Manila time                                                                                                                                          |
-| `TimeOff`      | id, startDate, endDate, note — whole Manila days off                                                                                                                                                                                   |
-| `Bookings`     | id, studentEmail, start, end (UTC ISO), status (CONFIRMED/CANCELLED/COMPLETED/NO_SHOW), lessonId, topic, studentNote, meetingLink, materials, feedback, privateNote, createdAt, cancelledAt, cancelledBy, cancelReason, reminderSentAt |
-| `Lessons`      | id, title, level, summary, content, materialsUrl, createdAt                                                                                                                                                                            |
-| `Settings`     | key, value (lesson length, slot step, notice periods, booking window, default meeting link, school name)                                                                                                                               |
-| `Logins`       | email, username (lowercase), passwordHash (`pbkdf2-sha256$iterations$salt$hash`), updatedAt — only for users who added a password                                                                                                      |
+| Tab             | Columns                                                                                                                                                                                                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Users`         | email, name, role (ADMIN/STUDENT), active, timeZone, level, nativeLanguage, goals, contact, createdAt                                                                                                                                  |
+| `Availability`  | id, weekday (0=Sun…6=Sat), start (HH:MM), end (HH:MM) — teacher's weekly hours in Manila time                                                                                                                                          |
+| `TimeOff`       | id, startDate, endDate, note — whole Manila days off                                                                                                                                                                                   |
+| `Bookings`      | id, studentEmail, start, end (UTC ISO), status (CONFIRMED/CANCELLED/COMPLETED/NO_SHOW), lessonId, topic, studentNote, meetingLink, materials, feedback, privateNote, createdAt, cancelledAt, cancelledBy, cancelReason, reminderSentAt |
+| `Lessons`       | id, title, level, summary, content, materialsUrl, createdAt                                                                                                                                                                            |
+| `Settings`      | key, value (lesson length, slot step, notice periods, booking window, default meeting link, school name)                                                                                                                               |
+| `Notifications` | id, email, kind, bookingId, classStart, actorName, detail, createdAt, readAt — the bell's updates; pruned after 30 days                                                                                                                |
+| `Dismissals`    | email, todo, createdAt — setup suggestions a user dismissed                                                                                                                                                                            |
+| `Logins`        | email, username (lowercase), passwordHash (`pbkdf2-sha256$iterations$salt$hash`), updatedAt — only for users who added a password                                                                                                      |
 
 `setupDatabase` creates missing tabs and is safe to re-run. It also migrates the
 earlier leave-tracking Sheet: the Users tab is converted (ADMIN stays ADMIN,
@@ -115,7 +117,17 @@ everyone else becomes STUDENT) and the old leave tabs are renamed with an
 
 `installTriggers` sets up an hourly `sendReminders` trigger that emails students
 about confirmed classes starting within 24 hours, once per booking
-(`reminderSentAt`).
+(`reminderSentAt`). The same job deletes `Notifications` rows older than
+`NOTIFICATION_DAYS`.
+
+## In-app notifications
+
+Handlers that send a booking email also call `addNotification` (inside
+`withLock`) for the same recipient, so the bell and the emails agree. The text
+is built in the SPA from `kind` with `notificationText` (`shared/notifications.ts`),
+so class times show in the viewer's current time zone. To-do items come from
+`todosFor` on every `notifications` call and are never stored; only dismissals
+of setup suggestions are (`Dismissals`).
 
 ## Limits to keep in mind
 

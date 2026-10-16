@@ -1,3 +1,4 @@
+import type { NotificationKind } from '../../shared/notifications';
 import { DEFAULT_SETTINGS } from '../../shared/slots';
 import type {
   AvailabilityRule,
@@ -42,9 +43,26 @@ export const SCHEMA = {
   Settings: ['key', 'value'],
   /** Password sign-in, kept apart from Users so hashes never reach any user-facing response. */
   Logins: ['email', 'username', 'passwordHash', 'updatedAt'],
+  /** The bell (shared/notifications.ts); rows older than NOTIFICATION_DAYS are pruned hourly. */
+  Notifications: ['id', 'email', 'kind', 'bookingId', 'classStart', 'actorName', 'detail', 'createdAt', 'readAt'],
+  /** Setup suggestions a user has dismissed. */
+  Dismissals: ['email', 'todo', 'createdAt'],
 } as const;
 
 export type Table = keyof typeof SCHEMA;
+
+/** A notification as stored; `readAt` is null until read. */
+export interface StoredNotification {
+  id: string;
+  email: string;
+  kind: NotificationKind;
+  bookingId: string;
+  classStart: string;
+  actorName: string;
+  detail: string;
+  createdAt: string;
+  readAt: string | null;
+}
 
 /** A username/password for an existing user. Server-only: never return it from a handler. */
 export interface Login {
@@ -220,6 +238,26 @@ export const db = {
     })),
   insertLogin: (l: Login): void => appendRow('Logins', toRow(l)),
   updateLogin: (l: Login): void => updateRow('Logins', 'email', l.email, toRow(l)),
+
+  notifications: (): StoredNotification[] =>
+    readRows('Notifications').map((r) => ({
+      id: r.id,
+      email: r.email.trim().toLowerCase(),
+      kind: r.kind as NotificationKind,
+      bookingId: r.bookingId,
+      classStart: r.classStart,
+      actorName: r.actorName,
+      detail: r.detail,
+      createdAt: r.createdAt,
+      readAt: nullable(r.readAt),
+    })),
+  insertNotification: (n: StoredNotification): void => appendRow('Notifications', toRow(n)),
+  replaceNotifications: (rows: StoredNotification[]): void => replaceRows('Notifications', rows.map(toRow)),
+
+  dismissals: (): { email: string; todo: string }[] =>
+    readRows('Dismissals').map((r) => ({ email: r.email.trim().toLowerCase(), todo: r.todo })),
+  insertDismissal: (email: string, todo: string, createdAt: string): void =>
+    appendRow('Dismissals', { email, todo, createdAt }),
 
   settings: readSettings,
   saveSettings: (s: Settings): void =>

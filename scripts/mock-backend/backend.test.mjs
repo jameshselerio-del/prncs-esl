@@ -664,3 +664,87 @@ describe('password sign-up', () => {
     expect(signedOut('completeSignUp', { email: NEW.email, code }).error).toContain('took that username');
   });
 });
+
+describe('notifications (the bell)', () => {
+  const inbox = (token) => ok(token, 'notifications');
+  // Ignores the sample notifications from seed.mjs (ids `note-…`).
+  const recent = (token) => inbox(token).notifications.filter((n) => !n.id.startsWith('note-'));
+  const kinds = (token) => recent(token).map((n) => n.kind);
+  const updateYukiNext = (fields) => {
+    const b = ok(teacher, 'allBookings').find((x) => x.id === 'booking-yuki-next');
+    const { lessonId, topic, meetingLink, materials, feedback, privateNote } = { ...b, ...fields };
+    return ok(teacher, 'updateBooking', { id: b.id, lessonId, topic, meetingLink, materials, feedback, privateNote });
+  };
+
+  it('tells the teacher about new bookings and student cancellations', () => {
+    const [slot] = ok(yuki, 'availability');
+    const booked = ok(yuki, 'book', { start: slot.start, topic: 'Travel English', studentNote: 'secret-ish' });
+    ok(yuki, 'cancelBooking', { id: booked.id, reason: 'Exam week' });
+    const [cancel, created] = recent(teacher);
+    expect(created).toMatchObject({ kind: 'NEW_BOOKING', actorName: 'Yuki Tanaka', detail: 'Travel English' });
+    expect(cancel).toMatchObject({ kind: 'CANCELLED_BY_STUDENT', detail: 'Exam week', read: false });
+    expect(cancel.classStart).toBe(slot.start);
+    expect(kinds(yuki)).toEqual([]);
+  });
+
+  it('tells students when the teacher books, cancels, adds feedback or a new meeting link', () => {
+    const [slot] = ok(teacher, 'schedule') && ok(minh, 'availability');
+    ok(teacher, 'bookForStudent', {
+      studentEmail: 'minh@example.com',
+      start: slot.start,
+      topic: 'Verbs',
+      studentNote: '',
+    });
+    ok(teacher, 'cancelBooking', { id: 'booking-yuki-next', reason: 'Teacher is sick' });
+    expect(kinds(minh)).toEqual(['BOOKED_FOR_YOU']);
+    expect(recent(yuki)[0]).toMatchObject({ kind: 'CANCELLED_BY_TEACHER', detail: 'Teacher is sick' });
+
+    backend = fresh();
+    updateYukiNext({ meetingLink: 'https://meet.example.com/new-room', privateNote: 'never shown' });
+    updateYukiNext({ feedback: 'Well done!' });
+    updateYukiNext({ feedback: 'Well done!' }); // unchanged: nothing new
+    expect(kinds(yuki)).toEqual(['FEEDBACK_ADDED', 'LINK_ADDED']);
+    expect(JSON.stringify(inbox(yuki))).not.toContain('never shown');
+    expect(JSON.stringify(inbox(yuki))).not.toContain('"email"');
+  });
+
+  it('marks notifications read, one or all, only for their owner', () => {
+    ok(teacher, 'cancelBooking', { id: 'booking-yuki-next', reason: '' });
+    ok(teacher, 'cancelBooking', { id: 'booking-minh-next', reason: '' });
+    const [mine] = inbox(yuki).notifications;
+    // Minh can't mark Yuki's notification.
+    expect(ok(minh, 'markNotificationsRead', { ids: [mine.id] }).updated).toBe(0);
+    expect(ok(yuki, 'markNotificationsRead', { ids: [mine.id] }).updated).toBe(1);
+    expect(inbox(yuki).notifications[0].read).toBe(true);
+    expect(ok(minh, 'markNotificationsRead', { all: true }).updated).toBe(1);
+    expect(inbox(minh).notifications.every((n) => n.read)).toBe(true);
+    expect(err(yuki, 'markNotificationsRead', { ids: 'all' }).error).toBe('Invalid ids.');
+  });
+
+  it('lists setup to-dos until done or dismissed', () => {
+    expect(inbox(yuki).todos.map((t) => t.id)).toEqual(['set-password']);
+    ok(yuki, 'dismissTodo', { id: 'set-password' });
+    expect(inbox(yuki).todos).toEqual([]);
+    expect(err(yuki, 'dismissTodo', { id: 'record-outcomes' }).error).toContain('cannot be dismissed');
+    // Dismissals are per user.
+    expect(inbox(minh).todos.map((t) => t.id)).toEqual(['set-password']);
+  });
+
+  it('reminds about a class starting soon, and the teacher about outcomes to record', () => {
+    const next = ok(yuki, 'myBookings').find((b) => b.id === 'booking-yuki-next');
+    backend.clock.set(Date.parse(next.start) - 10 * 60_000);
+    const soon = inbox(yuki).todos.find((t) => t.kind === 'CLASS_SOON');
+    expect(soon).toMatchObject({ id: 'class-soon:booking-yuki-next', meetingLink: next.meetingLink });
+    expect(inbox(teacher).todos.find((t) => t.kind === 'CLASS_SOON').studentName).toBe('Yuki Tanaka');
+    backend.clock.set(Date.parse(next.end) + 60_000);
+    expect(inbox(teacher).todos.find((t) => t.kind === 'RECORD_OUTCOMES').count).toBeGreaterThan(0);
+  });
+
+  it('drops notifications older than 30 days', () => {
+    ok(teacher, 'cancelBooking', { id: 'booking-yuki-next', reason: '' });
+    backend.clock.advance(31 * 24 * HOUR);
+    expect(inbox(yuki).notifications).toEqual([]);
+    backend.sendReminders();
+    expect(backend.sheet('Notifications').records()).toEqual([]);
+  });
+});

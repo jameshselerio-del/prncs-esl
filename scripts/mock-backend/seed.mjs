@@ -129,4 +129,29 @@ export function seed(backend) {
       topic: 'Interview next month',
     }),
   ]);
+
+  // A read update for Yuki and an unread one for the teacher, so the bell has something to show.
+  const bookings = backend.sheet('Bookings').records();
+  const startOf = (id) => bookings.find((b) => b.id === id).start;
+  backend.insert('Notifications', [
+    {
+      id: 'note-yuki-feedback',
+      email: yuki.email,
+      kind: 'FEEDBACK_ADDED',
+      bookingId: 'booking-yuki-past',
+      classStart: startOf('booking-yuki-past'),
+      createdAt: new Date(now - 6 * DAY).toISOString(),
+      readAt: new Date(now - 5 * DAY).toISOString(),
+    },
+    {
+      id: 'note-teacher-sofia',
+      email: TEACHER.email,
+      kind: 'NEW_BOOKING',
+      bookingId: 'booking-sofia-next',
+      classStart: startOf('booking-sofia-next'),
+      actorName: sofia.name,
+      detail: 'Interview next month',
+      createdAt: new Date(now - 2 * HOUR).toISOString(),
+    },
+  ]);
 }
