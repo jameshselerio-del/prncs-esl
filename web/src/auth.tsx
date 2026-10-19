@@ -104,7 +104,7 @@ function SignIn({ onSignIn, notice }: { onSignIn: (token: string) => void; notic
       window.google.accounts.id.renderButton(buttonRef.current, {
         theme: 'outline',
         size: 'large',
-        text: 'signin_with',
+        text: 'continue_with',
       });
     }, 100);
     const giveUp = window.setTimeout(() => {
@@ -121,10 +121,11 @@ function SignIn({ onSignIn, notice }: { onSignIn: (token: string) => void; notic
     <SignInLayout>
       <p>Sign in to book and manage your lessons.</p>
       {notice && <p className="notice">{notice}</p>}
-      <div ref={buttonRef} />
-      {error && <p className="error">{error}</p>}
-      <OrDivider />
       <PasswordSignIn onSignIn={onSignIn} />
+      {/* Google is an optional extra; username and password is the main way in. */}
+      <OrDivider />
+      <div ref={buttonRef} aria-label="Continue with Google" />
+      {error && <p className="error">{error}</p>}
     </SignInLayout>
   );
 }

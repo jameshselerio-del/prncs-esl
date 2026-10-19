@@ -1,4 +1,5 @@
 import type { Profile as ProfileFields } from '../../../shared/types';
+import { hasEmail } from '../../../shared/validation';
 import { useApi } from '../api';
 import { PasswordSettings } from '../components/PasswordSettings';
 import { ProfileForm } from '../components/ProfileForm';
@@ -21,7 +22,7 @@ export function Profile() {
       <h2>My profile</h2>
       <ProfileForm
         initial={initial}
-        email={user.email}
+        email={hasEmail(user.email) ? user.email : 'No email address'}
         submitLabel="Save profile"
         student={user.role === 'STUDENT'}
         onSubmit={async (profile) => {

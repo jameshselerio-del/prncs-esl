@@ -57,6 +57,13 @@ docs/      Requirements, architecture, backlog.
 
 Students can sign up without Google, or add a password to a Google account.
 
+- **Teacher-created accounts:** `createStudent` (teacher only) adds the `Users`
+  and `Logins` rows in one lock; `setStudentLogin` sets or resets a student's
+  login (ending their older sessions and clearing a lockout). A student without
+  email gets the placeholder `<username>@no-email.invalid` (`NO_EMAIL_DOMAIN`),
+  so the email-keyed data model still works; `hasEmail()` hides it in the UI and
+  `mail.ts` never sends to `.invalid` addresses. Passwords are never emailed.
+
 - **Sign-up:** `requestSignUp` checks the email, username and password, then
   emails a 6-digit code; the username and password hash wait in `CacheService`
   until `completeSignUp` uses the code, which creates the `Logins` row and

@@ -1,7 +1,7 @@
 import { buildIcs, type ClassEvent } from '../../shared/ics';
 import { appUrl } from './config';
-import { DEMO_DOMAIN } from './demo';
 import type { Booking, Settings, User } from '../../shared/types';
+import { hasEmail } from '../../shared/validation';
 
 /** e.g. "Mon, Oct 26, 2026, 9:00 AM (Asia/Tokyo)" in the recipient's time zone. */
 function when(b: Booking, timeZone: string): string {
@@ -22,8 +22,8 @@ function send(
   settings: Settings,
   attachments: GoogleAppsScript.Base.BlobSource[] = [],
 ): void {
-  // Staging demo students have undeliverable .invalid addresses; never email them.
-  if (!to || to.endsWith(DEMO_DOMAIN)) return;
+  // Students without email (and staging demo students) have undeliverable .invalid addresses.
+  if (!to || !hasEmail(to)) return;
   try {
     MailApp.sendEmail({
       to,
@@ -176,9 +176,9 @@ export const notify = {
         greeting(user),
         '',
         firstTime
-          ? `You can now sign in with the username "${username}" and your password, as well as with Google.`
+          ? `You can now sign in with the username "${username}" and your password.`
           : `The password for your username "${username}" was just changed.`,
-        "If this wasn't you, sign in with Google, set a new password on your Profile page, and tell your teacher.",
+        'If this wasn\'t you, use "Forgot password?" on the sign-in page to set a new one, and tell your teacher.',
       ],
       settings,
     );
@@ -209,6 +209,35 @@ export const notify = {
         'Someone (probably you) tried to create an account with this email address, but it already has a username and password.',
         'Sign in with them, or use "Forgot password?" on the sign-in page.',
         "If this wasn't you, you can ignore this email.",
+      ],
+      settings,
+    );
+  },
+
+  /** The teacher created the account; the password is given in person, never emailed. */
+  accountCreated(user: Recipient, username: string, settings: Settings): void {
+    send(
+      user.email,
+      'Your account is ready',
+      [
+        greeting(user),
+        '',
+        `Your teacher created an account for you. Your username is "${username}".`,
+        'Your teacher will give you your password. You can change it later on your Profile page.',
+      ],
+      settings,
+    );
+  },
+
+  passwordSetByTeacher(user: Recipient, username: string, settings: Settings): void {
+    send(
+      user.email,
+      'Your teacher set a new password',
+      [
+        greeting(user),
+        '',
+        `Your teacher set a new password for your username "${username}". Ask your teacher for it.`,
+        'You can change it later on your Profile page.',
       ],
       settings,
     );

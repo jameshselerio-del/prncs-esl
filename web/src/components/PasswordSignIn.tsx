@@ -87,6 +87,7 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
       >
         <h2>Create an account</h2>
         <p className="hint">We'll email you a code to confirm your address. Class confirmations are sent there too.</p>
+        <p className="hint">Don't use email? Ask your teacher to set up your account for you.</p>
         <label>
           Email
           <input
@@ -187,6 +188,7 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
       >
         <h2>Forgot your password?</h2>
         <p className="hint">Enter your username or email and we'll email you a code to set a new password.</p>
+        <p className="hint">No email on your account? Ask your teacher to reset your password.</p>
         {loginField}
         <ErrorText error={error} />
         <button type="submit" className="primary" disabled={busy}>
@@ -260,12 +262,12 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
       <button type="button" className="link" onClick={() => go('forgot')}>
         Forgot password?
       </button>
-      <p className="hint signup-prompt">
-        New here?{' '}
-        <button type="button" className="link" onClick={() => go('signup')}>
+      <div className="signup-prompt">
+        <span className="hint">New here?</span>
+        <button type="button" className="secondary" onClick={() => go('signup')}>
           Create an account
         </button>
-      </p>
+      </div>
     </form>
   );
 }

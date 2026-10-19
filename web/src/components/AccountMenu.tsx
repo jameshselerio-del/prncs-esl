@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { levelLabel } from '../../../shared/validation';
+import { hasEmail, levelLabel } from '../../../shared/validation';
 import { useAuth } from '../auth';
 import { useSession } from '../session';
 import { useTheme, type ThemeChoice } from '../theme';
@@ -56,7 +56,7 @@ const THEMES: { id: ThemeChoice; label: string }[] = [
 /** Top-right account button: profile, theme, links and sign-out in a popover panel. */
 export function AccountMenu() {
   const { user } = useSession();
-  const { idToken, signOut } = useAuth();
+  const { idToken, passwordSession, signOut } = useAuth();
   const [theme, setTheme] = useTheme();
   const { open, setOpen, rootRef, buttonRef } = usePopover();
   const panelId = useId();
@@ -96,7 +96,7 @@ export function AccountMenu() {
             <Avatar name={user.name} picture={picture} size={52} />
             <div className="account-who">
               <strong>{user.name}</strong>
-              <span className="hint">{user.email}</span>
+              <span className="hint">{hasEmail(user.email) ? user.email : 'No email address'}</span>
               <span>
                 <span className="tag">{isTeacher ? 'Teacher' : 'Student'}</span>
                 {!isTeacher && user.level && <span className="tag">{levelLabel(user.level)}</span>}
@@ -123,9 +123,12 @@ export function AccountMenu() {
             ) : (
               <Link to="/bookings">My bookings</Link>
             )}
-            <a href="https://myaccount.google.com/" target="_blank" rel="noreferrer">
-              Manage Google account
-            </a>
+            {/* Only for Google sign-ins; password users may have no Google account at all. */}
+            {!passwordSession && (
+              <a href="https://myaccount.google.com/" target="_blank" rel="noreferrer">
+                Manage Google account
+              </a>
+            )}
           </nav>
 
           <fieldset className="account-theme">

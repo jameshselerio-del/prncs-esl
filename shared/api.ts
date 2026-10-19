@@ -39,6 +39,8 @@ export interface TeacherBooking extends Booking {
 }
 
 export interface StudentSummary extends User {
+  /** Username for password sign-in, or null if the student signs in only with Google. */
+  username: string | null;
   upcoming: number;
   completed: number;
   cancelled: number;
@@ -81,6 +83,13 @@ export interface SetPasswordPayload {
 /** A signed session for password sign-in; the SPA sends it in place of a Google ID token. */
 export interface SessionToken {
   token: string;
+}
+
+/** The teacher sets up a student who may have no Google account or email (`email: ''`). */
+export interface CreateStudentPayload extends Profile {
+  email: string;
+  username: string;
+  password: string;
 }
 
 export type LessonInput = Pick<Lesson, 'title' | 'level' | 'summary' | 'content' | 'materialsUrl'> & {
@@ -127,6 +136,9 @@ export interface Api {
   updateBooking: [UpdateBookingPayload, TeacherBooking];
   students: [Empty, StudentSummary[]];
   setStudentActive: [{ email: string; active: boolean }, User];
+  createStudent: [CreateStudentPayload, StudentSummary];
+  /** Sets (or resets) a student's username and password; their older password sessions end. */
+  setStudentLogin: [{ email: string; username: string; password: string }, { username: string }];
   schedule: [Empty, Schedule];
   saveSchedule: [{ rules: Omit<AvailabilityRule, 'id'>[]; settings: Settings }, Schedule];
   addTimeOff: [Omit<TimeOff, 'id'>, TimeOff];
@@ -156,6 +168,8 @@ export const ADMIN_ACTIONS: readonly Action[] = [
   'updateBooking',
   'students',
   'setStudentActive',
+  'createStudent',
+  'setStudentLogin',
   'schedule',
   'saveSchedule',
   'addTimeOff',

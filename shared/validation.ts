@@ -136,6 +136,15 @@ export function bookingDetailsErrors(d: BookingDetails): string[] {
   return errors;
 }
 
+/**
+ * Students the teacher sets up without an email address get a placeholder in the reserved
+ * `.invalid` domain, so the email-keyed data model still works and nothing is ever sent to it.
+ */
+export const NO_EMAIL_DOMAIN = '@no-email.invalid';
+export const noEmailAddress = (username: string): string => normalizeUsername(username) + NO_EMAIL_DOMAIN;
+/** False for placeholder (and staging demo) addresses, which can't receive email. */
+export const hasEmail = (email: string): boolean => !email.toLowerCase().endsWith('.invalid');
+
 /** A plausible email address (the emailed sign-up code proves it is real). */
 export const isEmail = (v: string): boolean => v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
