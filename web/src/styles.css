@@ -233,6 +233,17 @@ section {
   align-items: center;
 }
 
+/* Stacked groups of buttons/forms in a dialog, e.g. a student's password form above the deactivate button. */
+.detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-actions .error {
+  margin: 0;
+}
+
 .row,
 .row-between {
   display: flex;
