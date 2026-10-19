@@ -164,20 +164,19 @@ function StudentDetail({
           {s.upcoming} upcoming · {s.completed} completed · {s.noShows} no-show · {s.cancelled} cancelled
         </dd>
       </dl>
-      {settingLogin ? (
-        <SetLogin student={s} onDone={(username) => onChanged({ ...s, username })} />
-      ) : (
+      <div className="detail-actions">
+        {settingLogin && <SetLogin student={s} onDone={(username) => onChanged({ ...s, username })} />}
+        <ErrorText error={error} />
         <div className="actions">
-          <button type="button" onClick={() => setSettingLogin(true)}>
-            {s.username ? 'Reset password' : 'Set username and password'}
+          {!settingLogin && (
+            <button type="button" onClick={() => setSettingLogin(true)}>
+              {s.username ? 'Reset password' : 'Set username and password'}
+            </button>
+          )}
+          <button type="button" className={s.active ? 'danger' : 'primary'} disabled={busy} onClick={toggle}>
+            {s.active ? 'Deactivate student' : 'Reactivate student'}
           </button>
         </div>
-      )}
-      <ErrorText error={error} />
-      <div className="actions">
-        <button type="button" className={s.active ? 'danger' : 'primary'} disabled={busy} onClick={toggle}>
-          {s.active ? 'Deactivate student' : 'Reactivate student'}
-        </button>
       </div>
     </Modal>
   );
