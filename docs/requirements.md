@@ -22,6 +22,13 @@ see their lessons and manage their profile.
   way. The teacher can also add a student as a row in the Users tab; that
   student then signs up with the same email to set their username and password. Passwords can be
   changed (with the current one) and a forgotten one reset with an emailed code.
+- **Google is optional:** the sign-in page leads with username and password and
+  "Create an account"; "Continue with Google" is an extra option below. For
+  students who aren't comfortable with Google or email, the teacher can **add a
+  student** on the Students page (name, optional email, username, password,
+  time zone, level) and later **reset their password**. A page then shows the
+  website, username and password to hand over. Students without email get no
+  class emails and can't use "Forgot password?" (they ask the teacher instead).
 - The teacher is the Users row with role `ADMIN`. The teacher can deactivate a
   student, which blocks sign-in and booking.
 

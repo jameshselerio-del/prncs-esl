@@ -826,6 +826,13 @@ section {
 }
 
 .password-signin .signup-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
   text-align: center;
 }
 
@@ -1896,6 +1903,48 @@ button.link.danger-text {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* ---------- Teacher-created sign-ins ---------- */
+
+.password-suggest {
+  display: flex;
+  gap: 8px;
+}
+
+.password-suggest input {
+  flex: 1;
+  min-width: 0;
+}
+
+.login-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 8px 0;
+  padding: 14px 16px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+
+.login-card p {
+  margin: 0;
+}
+
+.login-card .details {
+  margin: 8px 0;
+}
+
+.login-card dd {
+  overflow-wrap: anywhere;
+}
+
+.login-card .login-value {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 /* ---------- Loading ---------- */

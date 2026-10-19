@@ -59,8 +59,8 @@ export function PasswordSettings() {
       <h3 id="password-title">{hasPassword ? 'Username and password' : 'Sign in with a password'}</h3>
       <p className="hint">
         {hasPassword
-          ? 'You can sign in with Google or with this username and password.'
-          : 'You sign in with Google. Add a username and password to also sign in without Google.'}
+          ? 'You sign in with this username and password.'
+          : 'You sign in with Google. Add a username and password to also sign in without it.'}
       </p>
       <form className="form" onSubmit={submit}>
         <label>

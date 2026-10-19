@@ -97,7 +97,9 @@ const failureKey = (email: string) => 'pwfail_' + toHex(sha256(utf8(email)));
 export function checkNotLockedOut(email: string): void {
   const failures = Number(CacheService.getScriptCache().get(failureKey(email)) ?? 0);
   if (failures >= MAX_FAILURES) {
-    throw new ApiError('Too many incorrect attempts. Please wait 15 minutes, or sign in with Google.');
+    throw new ApiError(
+      'Too many incorrect attempts. Please wait 15 minutes and try again, or ask your teacher to reset your password.',
+    );
   }
 }
 

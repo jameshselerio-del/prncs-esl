@@ -1,4 +1,4 @@
-import type { Action, Api, StudentBooking, TeacherBooking } from '../../shared/api';
+import type { Action, Api, StudentBooking, StudentSummary, TeacherBooking } from '../../shared/api';
 import {
   canRecordOutcome,
   canStudentCancel,
@@ -20,8 +20,10 @@ import type { AvailabilityRule, Booking, Level, Profile, Settings, User, Weekday
 import {
   availabilityErrors,
   bookingDetailsErrors,
+  hasEmail,
   isEmail,
   lessonErrors,
+  noEmailAddress,
   normalizeUsername,
   PASSWORD_MAX,
   passwordErrors,
@@ -192,15 +194,45 @@ function savePassword(owner: Owner, username: string, password: string, existing
     passwordHash: hashPassword(password),
     updatedAt: now.toISOString(),
   };
-  withLock(() => {
-    const taken = db.logins().some((l) => l.username === username && l.email !== owner.email);
-    if (taken) throw new ApiError(USERNAME_TAKEN);
-    if (db.logins().some((l) => l.email === owner.email)) db.updateLogin(login);
-    else db.insertLogin(login);
-  });
+  withLock(() => writeLogin(login));
   clearFailures(owner.email);
   notify.passwordChanged(owner, username, !existing, db.settings());
   return createSession(login, now);
+}
+
+/** Inside withLock: adds or replaces a login, refusing a username another account already uses. */
+function writeLogin(login: Login): void {
+  const logins = db.logins();
+  if (logins.some((l) => l.username === login.username && l.email !== login.email)) throw new ApiError(USERNAME_TAKEN);
+  if (logins.some((l) => l.email === login.email)) db.updateLogin(login);
+  else db.insertLogin(login);
+}
+
+/** A student with their class counts, for the teacher's Students page. */
+function summarize(u: User, bookings: Booking[], logins: Login[], now: number): StudentSummary {
+  const mine = bookings.filter((b) => b.studentEmail === u.email);
+  const past = mine.filter((b) => b.status !== 'CANCELLED' && Date.parse(b.start) <= now);
+  return {
+    ...u,
+    username: logins.find((l) => l.email === u.email)?.username ?? null,
+    upcoming: mine.filter((b) => b.status === 'CONFIRMED' && Date.parse(b.start) > now).length,
+    completed: mine.filter((b) => b.status === 'COMPLETED').length,
+    cancelled: mine.filter((b) => b.status === 'CANCELLED').length,
+    noShows: mine.filter((b) => b.status === 'NO_SHOW').length,
+    lastClass:
+      past
+        .map((b) => b.start)
+        .sort()
+        .pop() ?? null,
+  };
+}
+
+/** Reads and checks a username + password the teacher chose for a student. */
+function readStudentLogin(payload: Payload, email: string): { username: string; password: string } {
+  const username = normalizeUsername(text(payload, 'username', USERNAME_MAX + 10, true));
+  const password = text(payload, 'password', PASSWORD_MAX, true);
+  fail([...usernameErrors(username), ...passwordErrors(password, { username, email: hasEmail(email) ? email : '' })]);
+  return { username, password };
 }
 
 const USERNAME_TAKEN = 'That username is taken. Please choose another.';
@@ -265,7 +297,7 @@ export const handlers: { [A in Action]: Handler<A> } = {
     const username = normalizeUsername(text(payload, 'username', USERNAME_MAX + 10, true));
     const password = text(payload, 'password', PASSWORD_MAX, true);
     fail([
-      ...(isEmail(email) ? [] : ['Enter a valid email address.']),
+      ...(isEmail(email) && hasEmail(email) ? [] : ['Enter a valid email address.']),
       ...usernameErrors(username),
       ...passwordErrors(password, { username, email }),
     ]);
@@ -610,27 +642,46 @@ export const handlers: { [A in Action]: Handler<A> } = {
 
   students(ctx) {
     const bookings = db.bookings();
-    const now = ctx.now.getTime();
+    const logins = db.logins();
     return db
       .users()
       .filter((u) => u.role === 'STUDENT')
-      .map((u) => {
-        const mine = bookings.filter((b) => b.studentEmail === u.email);
-        const past = mine.filter((b) => b.status !== 'CANCELLED' && Date.parse(b.start) <= now);
-        return {
-          ...u,
-          upcoming: mine.filter((b) => b.status === 'CONFIRMED' && Date.parse(b.start) > now).length,
-          completed: mine.filter((b) => b.status === 'COMPLETED').length,
-          cancelled: mine.filter((b) => b.status === 'CANCELLED').length,
-          noShows: mine.filter((b) => b.status === 'NO_SHOW').length,
-          lastClass:
-            past
-              .map((b) => b.start)
-              .sort()
-              .pop() ?? null,
-        };
-      })
+      .map((u) => summarize(u, bookings, logins, ctx.now.getTime()))
       .sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  createStudent(ctx, payload) {
+    const profile = readProfile(payload);
+    const given = text(payload, 'email', 254).trim().toLowerCase();
+    if (given && (!isEmail(given) || !hasEmail(given)))
+      throw new ApiError('Enter a valid email address, or leave it empty.');
+    const username = normalizeUsername(text(payload, 'username', USERNAME_MAX + 10, true));
+    const email = given || noEmailAddress(username);
+    const { password } = readStudentLogin(payload, email);
+
+    const student: User = { ...profile, email, role: 'STUDENT', active: true, createdAt: ctx.now.toISOString() };
+    const login: Login = { email, username, passwordHash: hashPassword(password), updatedAt: ctx.now.toISOString() };
+    withLock(() => {
+      if (db.users().some((u) => u.email === email) || db.logins().some((l) => l.email === email)) {
+        throw new ApiError(given ? 'A student with this email already exists.' : USERNAME_TAKEN);
+      }
+      writeLogin(login);
+      db.insertUser(student);
+    });
+    notify.accountCreated(student, username, db.settings());
+    return summarize(student, [], [login], ctx.now.getTime());
+  },
+
+  setStudentLogin(ctx, payload) {
+    const email = text(payload, 'email', 254, true).trim().toLowerCase();
+    const student = db.users().find((u) => u.email === email);
+    if (!student || student.role !== 'STUDENT') throw new ApiError('Student not found.');
+    const { username, password } = readStudentLogin(payload, email);
+    const login: Login = { email, username, passwordHash: hashPassword(password), updatedAt: ctx.now.toISOString() };
+    withLock(() => writeLogin(login));
+    clearFailures(email);
+    notify.passwordSetByTeacher(student, username, db.settings());
+    return { username };
   },
 
   setStudentActive(_ctx, payload) {

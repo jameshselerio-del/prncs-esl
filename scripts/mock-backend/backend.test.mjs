@@ -748,3 +748,115 @@ describe('notifications (the bell)', () => {
     expect(backend.sheet('Notifications').records()).toEqual([]);
   });
 });
+
+describe('teacher-created accounts', () => {
+  const signedOut = (action, payload) => backend.call('', action, payload);
+  const profile = {
+    name: 'Haruko Sato',
+    timeZone: 'Asia/Tokyo',
+    level: '',
+    nativeLanguage: 'Japanese',
+    goals: '',
+    contact: '',
+  };
+
+  it('creates a student with no email who signs in with a username and password', () => {
+    const created = ok(teacher, 'createStudent', {
+      ...profile,
+      email: '',
+      username: 'Haruko',
+      password: 'sakura tea 7',
+    });
+    expect(created).toMatchObject({
+      name: 'Haruko Sato',
+      email: 'haruko@no-email.invalid',
+      username: 'haruko',
+      upcoming: 0,
+    });
+    expect(ok(teacher, 'students').find((s) => s.username === 'haruko').name).toBe('Haruko Sato');
+    expect(JSON.stringify(ok(teacher, 'students'))).not.toContain('pbkdf2');
+
+    const { token } = signedOut('signInWithPassword', { login: 'haruko', password: 'sakura tea 7' }).data;
+    expect(ok(token, 'me')).toMatchObject({ registered: true, user: { name: 'Haruko Sato' }, username: 'haruko' });
+    // Bookings work, and nothing is ever emailed to the placeholder address.
+    const [slot] = ok(token, 'availability');
+    ok(token, 'book', { start: slot.start, topic: '', studentNote: '' });
+    expect(backend.state.mail.filter((m) => m.to.endsWith('.invalid'))).toEqual([]);
+    expect(
+      signedOut('requestSignUp', { email: 'x@no-email.invalid', username: 'xx1', password: 'whatever 123' }).ok,
+    ).toBe(false);
+  });
+
+  it('creates a student with an email and tells them their username, never the password', () => {
+    ok(teacher, 'createStudent', {
+      ...profile,
+      email: 'Haruko@Example.com',
+      username: 'haruko',
+      password: 'sakura tea 7',
+    });
+    const [mail] = mailTo('haruko@example.com');
+    expect(mail.subject).toContain('Your account is ready');
+    expect(mail.body).toContain('"haruko"');
+    expect(mail.body).not.toContain('sakura tea 7');
+    expect(
+      err(teacher, 'createStudent', {
+        ...profile,
+        email: 'haruko@example.com',
+        username: 'other',
+        password: 'sakura tea 7',
+      }).error,
+    ).toContain('already exists');
+  });
+
+  it('refuses taken usernames, bad input and non-teachers', () => {
+    ok(yuki, 'setPassword', { username: 'yuki', currentPassword: '', newPassword: 'green tea 123' });
+    expect(
+      err(teacher, 'createStudent', { ...profile, email: '', username: 'yuki', password: 'sakura tea 7' }).error,
+    ).toContain('taken');
+    expect(
+      err(teacher, 'createStudent', { ...profile, email: 'nope', username: 'h1', password: 'sakura tea 7' }).error,
+    ).toContain('valid email');
+    expect(
+      err(teacher, 'createStudent', { ...profile, name: '', email: '', username: 'h2', password: 'sakura tea 7' })
+        .error,
+    ).toContain('Name');
+    expect(err(teacher, 'createStudent', { ...profile, email: '', username: 'h3', password: 'short' }).error).toContain(
+      'at least 8',
+    );
+    expect(
+      err(minh, 'createStudent', { ...profile, email: '', username: 'h4', password: 'sakura tea 7' }).error,
+    ).toContain('Only the teacher');
+    expect(
+      backend
+        .sheet('Users')
+        .records()
+        .some((u) => u.name === 'Haruko Sato'),
+    ).toBe(false);
+  });
+
+  it('lets the teacher set or reset a student password, ending older sessions', () => {
+    const { token: old } = ok(yuki, 'setPassword', {
+      username: 'yuki',
+      currentPassword: '',
+      newPassword: 'green tea 123',
+    });
+    expect(
+      ok(teacher, 'setStudentLogin', { email: 'yuki@example.com', username: 'yuki', password: 'new start 42' }),
+    ).toEqual({
+      username: 'yuki',
+    });
+    expect(err(old, 'me').code).toBe('AUTH');
+    expect(signedOut('signInWithPassword', { login: 'yuki', password: 'new start 42' }).ok).toBe(true);
+    expect(mailTo('yuki@example.com').at(-1).subject).toContain('Your teacher set a new password');
+
+    // Works for a Google-only student too, and clears a lockout.
+    for (let i = 0; i < 5; i++) signedOut('signInWithPassword', { login: 'yuki', password: 'wrong guess' });
+    ok(teacher, 'setStudentLogin', { email: 'minh@example.com', username: 'minh', password: 'pho bo 12345' });
+    ok(teacher, 'setStudentLogin', { email: 'yuki@example.com', username: 'yuki', password: 'again 2026' });
+    expect(signedOut('signInWithPassword', { login: 'yuki', password: 'again 2026' }).ok).toBe(true);
+    expect(ok(teacher, 'students').find((s) => s.email === 'minh@example.com').username).toBe('minh');
+    expect(
+      err(teacher, 'setStudentLogin', { email: 'teacher@example.com', username: 'ana', password: 'whatever 1' }).error,
+    ).toBe('Student not found.');
+  });
+});
