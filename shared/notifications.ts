@@ -16,6 +16,7 @@ export type NotificationKind =
   | 'CANCELLED_BY_TEACHER'
   | 'FEEDBACK_ADDED'
   | 'LINK_ADDED'
+  | 'ANNOUNCEMENT'
   // to the teacher
   | 'NEW_BOOKING'
   | 'CANCELLED_BY_STUDENT';
@@ -25,6 +26,7 @@ export const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   'CANCELLED_BY_TEACHER',
   'FEEDBACK_ADDED',
   'LINK_ADDED',
+  'ANNOUNCEMENT',
   'NEW_BOOKING',
   'CANCELLED_BY_STUDENT',
 ];
@@ -37,7 +39,7 @@ export interface AppNotification {
   classStart: IsoInstant;
   /** The student's name, for the teacher's notifications. */
   actorName: string;
-  /** Cancellation reason or booking topic (never a private note). */
+  /** Cancellation reason, booking topic (never a private note), or an announcement's title. */
   detail: string;
   createdAt: IsoInstant;
   read: boolean;
@@ -130,6 +132,8 @@ export function notificationText(n: Pick<AppNotification, 'kind' | 'actorName' |
       return { title: `New feedback on your class on ${when}.`, detail: '' };
     case 'LINK_ADDED':
       return { title: `The meeting link for your class on ${when} is ready.`, detail: '' };
+    case 'ANNOUNCEMENT':
+      return { title: `New announcement: ${n.detail}`, detail: 'From your teacher' };
     case 'NEW_BOOKING':
       return { title: `${n.actorName} booked a class on ${when}.`, detail: n.detail ? `Topic: ${n.detail}` : '' };
     case 'CANCELLED_BY_STUDENT':

@@ -860,3 +860,80 @@ describe('teacher-created accounts', () => {
     ).toBe('Student not found.');
   });
 });
+
+describe('announcements', () => {
+  const announce = (fields) =>
+    backend.call(teacher, 'sendAnnouncement', {
+      title: 'Holiday for {first name}',
+      body: 'Hi {first name}, no classes on Friday. — Ana',
+      recipients: ['yuki@example.com', 'minh@example.com'],
+      sendEmail: true,
+      ...fields,
+    });
+
+  it('sends a personalized email and bell notification to each chosen student', () => {
+    const res = announce();
+    expect(res.ok).toBe(true);
+    expect(res.data).toMatchObject({ title: 'Holiday for {first name}', emailed: true });
+    expect(res.data.recipients.map((r) => r.name)).toEqual(['Yuki Tanaka', 'Minh Nguyen']);
+
+    const [mail] = mailTo('yuki@example.com');
+    expect(mail.subject).toContain('Holiday for Yuki');
+    expect(mail.body).toContain('Hi Yuki, no classes on Friday.');
+    expect(mailTo('minh@example.com')[0].body).toContain('Hi Minh,');
+    expect(mailTo('sofia@example.com')).toEqual([]);
+
+    const bell = ok(yuki, 'notifications').notifications.find((n) => n.kind === 'ANNOUNCEMENT');
+    expect(bell).toMatchObject({ detail: 'Holiday for Yuki', read: false, classStart: '' });
+    expect(ok(yuki, 'myAnnouncements')).toEqual([
+      expect.objectContaining({ title: 'Holiday for Yuki', body: 'Hi Yuki, no classes on Friday. — Ana' }),
+    ]);
+    // Others don't see it.
+    expect(ok(mockToken(STUDENTS[2].email, STUDENTS[2].name), 'myAnnouncements')).toEqual([]);
+    expect(ok(teacher, 'announcements').sent).toHaveLength(1);
+  });
+
+  it('can skip email, and never emails students without an address', () => {
+    ok(teacher, 'createStudent', {
+      name: 'Haruko Sato',
+      timeZone: 'Asia/Tokyo',
+      level: '',
+      nativeLanguage: '',
+      goals: '',
+      contact: '',
+      email: '',
+      username: 'haruko',
+      password: 'sakura tea 7',
+    });
+    const before = backend.state.mail.length;
+    expect(announce({ recipients: ['haruko@no-email.invalid'] }).ok).toBe(true);
+    expect(backend.state.mail.length).toBe(before);
+    expect(announce({ sendEmail: false }).data.emailed).toBe(false);
+    expect(backend.state.mail.length).toBe(before);
+    expect(ok(yuki, 'myAnnouncements')).toHaveLength(1);
+  });
+
+  it('refuses when Google would run out of emails, before sending anything', () => {
+    backend.state.mailQuota = 1;
+    expect(ok(teacher, 'announcements').emailQuota).toBe(1);
+    const res = announce();
+    expect(res.ok).toBe(false);
+    expect(res.error).toContain('1 more emails today');
+    expect(backend.state.mail).toEqual([]);
+    expect(ok(yuki, 'myAnnouncements')).toEqual([]);
+    expect(announce({ sendEmail: false }).ok).toBe(true);
+  });
+
+  it('validates the message and recipients, and is teacher-only', () => {
+    expect(announce({ title: ' ' }).error).toContain('Add a title');
+    expect(announce({ recipients: [] }).error).toContain('at least one student');
+    expect(announce({ recipients: ['teacher@example.com'] }).error).toContain('not found');
+    ok(teacher, 'setStudentActive', { email: 'minh@example.com', active: false });
+    expect(announce().error).toContain('deactivated');
+    expect(announce({ recipients: 'all' }).error).toBe('Invalid recipients.');
+    expect(err(yuki, 'sendAnnouncement', { title: 'x', body: 'y', recipients: [], sendEmail: false }).error).toContain(
+      'Only the teacher',
+    );
+    expect(err(yuki, 'announcements').error).toContain('Only the teacher');
+  });
+});

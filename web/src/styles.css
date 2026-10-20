@@ -1916,6 +1916,125 @@ button.link.danger-text {
   white-space: nowrap;
 }
 
+/* ---------- Announcements ---------- */
+
+.announcement-form {
+  margin-bottom: 28px;
+}
+
+.announcement-form h3 {
+  margin: 0;
+}
+
+.placeholder-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: -6px;
+}
+
+.audience {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.audience legend {
+  padding: 0 0 6px;
+  font-weight: 500;
+}
+
+.student-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.student-picker input[type='search'] {
+  flex: 1;
+  min-width: 180px;
+}
+
+.student-picker button.link {
+  min-height: 0;
+  padding: 0;
+}
+
+.student-picker ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 4px 16px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.student-picker label.check {
+  font-weight: 400;
+}
+
+.student-picker .hint {
+  font-size: 0.8rem;
+}
+
+.announcement-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
+.announcement-preview p,
+.announcement-body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.announcement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.announcement-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.announcement-list h3 {
+  margin: 0;
+}
+
+.announcement-list summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  cursor: pointer;
+}
+
+.announcement-list details[open] summary {
+  margin-bottom: 10px;
+}
+
 /* ---------- Teacher-created sign-ins ---------- */
 
 .password-suggest {

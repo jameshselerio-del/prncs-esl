@@ -1,3 +1,4 @@
+import type { Announcement, SentAnnouncement } from './announcements';
 import type { Inbox } from './notifications';
 import type { BookingDetails } from './validation';
 import type {
@@ -92,6 +93,16 @@ export interface CreateStudentPayload extends Profile {
   password: string;
 }
 
+export interface SendAnnouncementPayload {
+  /** May contain `{first name}` / `{name}`, filled in per student. */
+  title: string;
+  body: string;
+  /** Emails of active students. */
+  recipients: string[];
+  /** Also email students who have an address (the bell always gets it). */
+  sendEmail: boolean;
+}
+
 export type LessonInput = Pick<Lesson, 'title' | 'level' | 'summary' | 'content' | 'materialsUrl'> & {
   /** Omit to create a new lesson. */
   id?: string;
@@ -120,6 +131,8 @@ export interface Api {
   notifications: [Empty, Inbox];
   /** Marks the given notifications, or all of them, as read. */
   markNotificationsRead: [{ ids?: string[]; all?: boolean }, { updated: number }];
+  /** Announcements the teacher sent this user, personalized for them (newest first). */
+  myAnnouncements: [Empty, Announcement[]];
   /** Hides a setup suggestion (see DISMISSIBLE_TODOS). */
   dismissTodo: [{ id: string }, { id: string }];
   /** Sets or changes the username and password; returns a fresh session (older ones stop working). */
@@ -137,6 +150,9 @@ export interface Api {
   students: [Empty, StudentSummary[]];
   setStudentActive: [{ email: string; active: boolean }, User];
   createStudent: [CreateStudentPayload, StudentSummary];
+  /** Sent announcements (newest first) and how many emails Google still allows today. */
+  announcements: [Empty, { sent: SentAnnouncement[]; emailQuota: number }];
+  sendAnnouncement: [SendAnnouncementPayload, SentAnnouncement];
   /** Sets (or resets) a student's username and password; their older password sessions end. */
   setStudentLogin: [{ email: string; username: string; password: string }, { username: string }];
   schedule: [Empty, Schedule];
@@ -169,6 +185,8 @@ export const ADMIN_ACTIONS: readonly Action[] = [
   'students',
   'setStudentActive',
   'createStudent',
+  'announcements',
+  'sendAnnouncement',
   'setStudentLogin',
   'schedule',
   'saveSchedule',

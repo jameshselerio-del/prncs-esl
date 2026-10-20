@@ -121,7 +121,10 @@ export function AccountMenu() {
             {isTeacher ? (
               <Link to="/availability">Availability &amp; booking settings</Link>
             ) : (
-              <Link to="/bookings">My bookings</Link>
+              <>
+                <Link to="/bookings">My bookings</Link>
+                <Link to="/announcements">Announcements</Link>
+              </>
             )}
             {/* Only for Google sign-ins; password users may have no Google account at all. */}
             {!passwordSession && (

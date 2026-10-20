@@ -2,7 +2,7 @@ import { setConfig } from './config';
 import { SCHEMA, type Table } from './db';
 
 /** Bump when SCHEMA changes so deployed scripts upgrade the Sheet on their next request. */
-export const SCHEMA_VERSION = '4';
+export const SCHEMA_VERSION = '5';
 
 /** Tabs from the earlier leave-tracking version; kept (renamed) rather than deleted. */
 const LEGACY_TABS = ['Requests', 'Ledger', 'Holidays'];
