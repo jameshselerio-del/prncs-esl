@@ -105,6 +105,7 @@ Students can sign up without Google, or add a password to a Google account.
 | `Lessons`       | id, title, level, summary, content, materialsUrl, createdAt                                                                                                                                                                            |
 | `Settings`      | key, value (lesson length, slot step, notice periods, booking window, default meeting link, school name)                                                                                                                               |
 | `Notifications` | id, email, kind, bookingId, classStart, actorName, detail, createdAt, readAt — the bell's updates; pruned after 30 days                                                                                                                |
+| `Announcements` | id, title, body (as written, placeholders unfilled), recipients (newline-separated emails), emailed, sentAt                                                                                                                            |
 | `Dismissals`    | email, todo, createdAt — setup suggestions a user dismissed                                                                                                                                                                            |
 | `Logins`        | email, username (lowercase), passwordHash (`pbkdf2-sha256$iterations$salt$hash`), updatedAt — only for users who added a password                                                                                                      |
 
@@ -135,6 +136,14 @@ is built in the SPA from `kind` with `notificationText` (`shared/notifications.t
 so class times show in the viewer's current time zone. To-do items come from
 `todosFor` on every `notifications` call and are never stored; only dismissals
 of setup suggestions are (`Dismissals`).
+
+Announcements (`sendAnnouncement`, teacher only) are stored once in
+`Announcements` and personalized per student at read and send time
+(`personalize` in `shared/announcements.ts`). Sending writes one `ANNOUNCEMENT`
+bell row per student (title in `detail`, no class time) inside `withLock`, then
+emails students who have an address. `MailApp.getRemainingDailyQuota()` is
+checked first so an announcement is never half-emailed; the mock tracks the
+quota in `state.mailQuota`.
 
 ## Limits to keep in mind
 

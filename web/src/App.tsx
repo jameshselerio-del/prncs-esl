@@ -12,7 +12,9 @@ import { ProfileForm } from './components/ProfileForm';
 import { Profile } from './pages/Profile';
 import { Book } from './pages/student/Book';
 import { Home } from './pages/student/Home';
+import { MyAnnouncements } from './pages/student/MyAnnouncements';
 import { MyBookings } from './pages/student/MyBookings';
+import { Announcements } from './pages/teacher/Announcements';
 import { Availability } from './pages/teacher/Availability';
 import { Lessons } from './pages/teacher/Lessons';
 import { Students } from './pages/teacher/Students';
@@ -30,6 +32,7 @@ const TEACHER_NAV = [
   { to: '/availability', label: 'Availability' },
   { to: '/lessons', label: 'Lessons' },
   { to: '/students', label: 'Students' },
+  { to: '/announcements', label: 'Announcements' },
 ];
 
 // HashRouter: GitHub Pages serves static files only, so deep links must live after the '#'.
@@ -82,12 +85,14 @@ export function App() {
                 <Route path="/availability" element={<Availability />} />
                 <Route path="/lessons" element={<Lessons />} />
                 <Route path="/students" element={<Students />} />
+                <Route path="/announcements" element={<Announcements />} />
               </>
             ) : (
               <>
                 <Route path="/" element={<Home />} />
                 <Route path="/book" element={<Book />} />
                 <Route path="/bookings" element={<MyBookings />} />
+                <Route path="/announcements" element={<MyAnnouncements />} />
               </>
             )}
             <Route path="/profile" element={<Profile />} />

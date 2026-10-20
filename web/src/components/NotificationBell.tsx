@@ -72,7 +72,7 @@ export function NotificationBell() {
   function openNotification(n: AppNotification) {
     if (!n.read) markRead({ ids: [n.id] });
     setOpen(false);
-    navigate(isTeacher ? '/' : '/bookings');
+    navigate(n.kind === 'ANNOUNCEMENT' ? '/announcements' : isTeacher ? '/' : '/bookings');
   }
 
   return (
@@ -154,7 +154,8 @@ export function NotificationBell() {
                   <h3 className="bell-section">Updates</h3>
                   <ul className="bell-list">
                     {inbox.notifications.map((n) => {
-                      const text = notificationText(n, when(n.classStart));
+                      // Announcements aren't about a class, so they have no class time.
+                      const text = notificationText(n, n.classStart ? when(n.classStart) : '');
                       return (
                         <li key={n.id} className={n.read ? 'bell-item' : 'bell-item unread'}>
                           <button type="button" className="bell-open" onClick={() => openNotification(n)}>

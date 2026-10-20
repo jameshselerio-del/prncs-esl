@@ -47,6 +47,8 @@ export const SCHEMA = {
   Notifications: ['id', 'email', 'kind', 'bookingId', 'classStart', 'actorName', 'detail', 'createdAt', 'readAt'],
   /** Setup suggestions a user has dismissed. */
   Dismissals: ['email', 'todo', 'createdAt'],
+  /** Teacher announcements, as written (placeholders unfilled); recipients are newline-separated emails. */
+  Announcements: ['id', 'title', 'body', 'recipients', 'emailed', 'sentAt'],
 } as const;
 
 export type Table = keyof typeof SCHEMA;
@@ -62,6 +64,15 @@ export interface StoredNotification {
   detail: string;
   createdAt: string;
   readAt: string | null;
+}
+
+export interface StoredAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  recipients: string[];
+  emailed: boolean;
+  sentAt: string;
 }
 
 /** A username/password for an existing user. Server-only: never return it from a handler. */
@@ -258,6 +269,22 @@ export const db = {
     readRows('Dismissals').map((r) => ({ email: r.email.trim().toLowerCase(), todo: r.todo })),
   insertDismissal: (email: string, todo: string, createdAt: string): void =>
     appendRow('Dismissals', { email, todo, createdAt }),
+
+  announcements: (): StoredAnnouncement[] =>
+    readRows('Announcements').map((r) => ({
+      id: r.id,
+      title: r.title,
+      body: r.body,
+      recipients: r.recipients.split('\n').filter(Boolean),
+      emailed: r.emailed.toUpperCase() === 'TRUE',
+      sentAt: r.sentAt,
+    })),
+  insertAnnouncement: (a: StoredAnnouncement): void =>
+    appendRow('Announcements', {
+      ...toRow(a),
+      recipients: a.recipients.join('\n'),
+      emailed: a.emailed ? 'TRUE' : 'FALSE',
+    }),
 
   settings: readSettings,
   saveSettings: (s: Settings): void =>

@@ -242,4 +242,9 @@ export const notify = {
       settings,
     );
   },
+
+  /** `title` and `body` are already personalized for this student. */
+  announcement(student: Recipient, title: string, body: string, settings: Settings): void {
+    send(student.email, title, [body, '', 'You can also read this on the Announcements page.'], settings);
+  },
 };

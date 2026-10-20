@@ -252,6 +252,8 @@ export function createGoogleFakes({ log = console, now = Date.now } = {}) {
     properties: new Map([['GOOGLE_CLIENT_ID', MOCK_CLIENT_ID]]),
     cache: new Map(),
     mail: [],
+    /** MailApp's daily allowance; each sent email uses one. */
+    mailQuota: 100,
     triggers: [],
   };
 
@@ -355,10 +357,12 @@ export function createGoogleFakes({ log = console, now = Date.now } = {}) {
 
   const MailApp = {
     sendEmail(message) {
+      if (state.mailQuota <= 0) throw new Error('Service invoked too many times for one day: email.');
+      state.mailQuota--;
       state.mail.push(message);
       log.log(`[mail] to ${message.to}: ${message.subject}`);
     },
-    getRemainingDailyQuota: () => 100,
+    getRemainingDailyQuota: () => state.mailQuota,
   };
 
   const ContentService = {

@@ -17,7 +17,7 @@ async function expectNoSideways(page: import('@playwright/test').Page) {
 const views = ['Table', 'Calendar', 'Timeline'];
 
 test('student pages fit a phone screen', async ({ page }) => {
-  for (const path of ['/', '/book', '/profile']) {
+  for (const path of ['/', '/book', '/profile', '/announcements']) {
     await openAs(page, YUKI, path);
     await expectNoSideways(page);
   }
@@ -29,7 +29,7 @@ test('student pages fit a phone screen', async ({ page }) => {
 });
 
 test('teacher pages fit a phone screen', async ({ page }) => {
-  for (const path of ['/availability', '/lessons', '/students', '/profile']) {
+  for (const path of ['/availability', '/lessons', '/students', '/announcements', '/profile']) {
     await openAs(page, TEACHER, path);
     await expectNoSideways(page);
   }

@@ -43,13 +43,20 @@ see their lessons and manage their profile.
 
 ## Teacher features
 
-| Page         | Contents                                                                                                                          |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| Bookings     | All bookings in table, calendar and timeline views with student names; filter by status/student; export CSV                       |
-| Booking edit | Assign a lesson, topic, meeting link, materials, feedback (visible to student) and a private note; mark completed/no-show; cancel |
-| Availability | Weekly hours (several ranges per day), time off (date ranges), booking settings                                                   |
-| Lessons      | Lesson library: title, level, summary, contents, materials link                                                                   |
-| Students     | List with profile details and booking counts; activate/deactivate                                                                 |
+| Page          | Contents                                                                                                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bookings      | All bookings in table, calendar and timeline views with student names; filter by status/student; export CSV                                                                           |
+| Booking edit  | Assign a lesson, topic, meeting link, materials, feedback (visible to student) and a private note; mark completed/no-show; cancel                                                     |
+| Availability  | Weekly hours (several ranges per day), time off (date ranges), booking settings                                                                                                       |
+| Lessons       | Lesson library: title, level, summary, contents, materials link                                                                                                                       |
+| Students      | List with profile details and booking counts; activate/deactivate                                                                                                                     |
+| Announcements | Write a title and message (with `{first name}` / `{name}` filled in per student), send to all active students or chosen ones, by email and/or the bell; history of sent announcements |
+
+**Announcements** reach students in their notification bell and on an
+Announcements page (account menu); with "Also send by email" ticked, students
+with an address are emailed too. Before sending, the server checks Google's
+daily email allowance and refuses (sending nothing) if the announcement would
+exceed it, so the teacher can send it app-only or to fewer students.
 
 ## Booking rules (enforced server-side)
 

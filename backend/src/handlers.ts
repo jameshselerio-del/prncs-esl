@@ -9,6 +9,14 @@ import {
   type ScheduleContext,
 } from '../../shared/slots';
 import {
+  ANNOUNCEMENT_BODY_MAX,
+  ANNOUNCEMENT_MAX_RECIPIENTS,
+  ANNOUNCEMENT_TITLE_MAX,
+  announcementErrors,
+  personalize,
+  type SentAnnouncement,
+} from '../../shared/announcements';
+import {
   DISMISSIBLE_TODOS,
   NOTIFICATION_DAYS,
   todosFor,
@@ -34,7 +42,7 @@ import {
   usernameErrors,
 } from '../../shared/validation';
 import type { Identity } from './auth';
-import { db, type Login, type StoredNotification } from './db';
+import { db, type Login, type StoredAnnouncement, type StoredNotification } from './db';
 import { ApiError } from './errors';
 import { notify } from './mail';
 import {
@@ -154,6 +162,18 @@ function addNotification(
     createdAt: now.toISOString(),
     readAt: null,
   });
+}
+
+/** The teacher's view of a stored announcement. */
+function sentView(a: StoredAnnouncement, users: User[]): SentAnnouncement {
+  return {
+    id: a.id,
+    title: a.title,
+    body: a.body,
+    sentAt: a.sentAt,
+    emailed: a.emailed,
+    recipients: a.recipients.map((email) => ({ email, name: users.find((u) => u.email === email)?.name ?? email })),
+  };
 }
 
 const notificationView = ({ email, readAt, ...rest }: StoredNotification): AppNotification => ({
@@ -453,6 +473,87 @@ export const handlers: { [A in Action]: Handler<A> } = {
       if (!done) db.insertDismissal(me.email, id, ctx.now.toISOString());
     });
     return { id };
+  },
+
+  myAnnouncements(ctx) {
+    const me = user(ctx);
+    return db
+      .announcements()
+      .filter((a) => a.recipients.includes(me.email))
+      .reverse()
+      .map((a) => ({ id: a.id, title: personalize(a.title, me), body: personalize(a.body, me), sentAt: a.sentAt }));
+  },
+
+  announcements() {
+    const users = db.users();
+    return {
+      sent: db
+        .announcements()
+        .reverse()
+        .map((a) => sentView(a, users)),
+      emailQuota: MailApp.getRemainingDailyQuota(),
+    };
+  },
+
+  sendAnnouncement(ctx, payload) {
+    const title = text(payload, 'title', ANNOUNCEMENT_TITLE_MAX).trim();
+    const body = text(payload, 'body', ANNOUNCEMENT_BODY_MAX).trim();
+    const raw = payload.recipients;
+    if (
+      !Array.isArray(raw) ||
+      raw.length > ANNOUNCEMENT_MAX_RECIPIENTS ||
+      raw.some((e) => typeof e !== 'string' || e.length > 254)
+    ) {
+      throw new ApiError('Invalid recipients.');
+    }
+    if (typeof payload.sendEmail !== 'boolean') throw new ApiError('Invalid sendEmail.');
+    const recipients = [...new Set((raw as string[]).map((e) => e.trim().toLowerCase()))];
+    fail(announcementErrors({ title, body, recipients }));
+
+    const users = db.users();
+    const students = recipients.map((email) =>
+      users.find((u) => u.email === email && u.role === 'STUDENT' && u.active),
+    );
+    if (students.some((s) => !s)) {
+      throw new ApiError('Some chosen students were not found or are deactivated. Reload the page and try again.');
+    }
+    const chosen = students as User[];
+    const emailable = payload.sendEmail ? chosen.filter((s) => hasEmail(s.email)) : [];
+    const quota = MailApp.getRemainingDailyQuota();
+    if (emailable.length > quota) {
+      throw new ApiError(
+        `Google lets this site send ${quota} more emails today, but this announcement needs ${emailable.length}. ` +
+          'Untick "Also send by email" (they still see it in the app), choose fewer students, or try tomorrow.',
+      );
+    }
+
+    const sent: StoredAnnouncement = {
+      id: Utilities.getUuid(),
+      title,
+      body,
+      recipients: chosen.map((s) => s.email),
+      emailed: payload.sendEmail,
+      sentAt: ctx.now.toISOString(),
+    };
+    withLock(() => {
+      db.insertAnnouncement(sent);
+      for (const s of chosen) {
+        db.insertNotification({
+          id: Utilities.getUuid(),
+          email: s.email,
+          kind: 'ANNOUNCEMENT',
+          bookingId: '',
+          classStart: '',
+          actorName: '',
+          detail: personalize(title, s),
+          createdAt: ctx.now.toISOString(),
+          readAt: null,
+        });
+      }
+    });
+    const settings = db.settings();
+    for (const s of emailable) notify.announcement(s, personalize(title, s), personalize(body, s), settings);
+    return sentView(sent, users);
   },
 
   lessons() {
