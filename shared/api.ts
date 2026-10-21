@@ -59,6 +59,15 @@ export interface BookPayload {
   start: IsoInstant;
   topic: string;
   studentNote: string;
+  /** A lesson from the library, or null to let the teacher decide. */
+  lessonId?: string | null;
+}
+
+/** Several classes booked together (all or nothing); topic and note apply to each. */
+export interface BookClassesPayload {
+  items: { start: IsoInstant; lessonId: string | null }[];
+  topic: string;
+  studentNote: string;
 }
 
 export interface BookForStudentPayload {
@@ -141,6 +150,7 @@ export interface Api {
   availability: [Empty, Slot[]];
   myBookings: [Empty, StudentBooking[]];
   book: [BookPayload, StudentBooking];
+  bookClasses: [BookClassesPayload, StudentBooking[]];
   cancelBooking: [{ id: string; reason: string }, StudentBooking];
 
   // Teacher only

@@ -86,6 +86,56 @@ export function checkNewBooking(
   return slot && errors.length === 0 ? { slot, errors: [] } : { slot: null, errors };
 }
 
+/** Most classes a student can book in one go. */
+export const MAX_CLASSES_PER_BOOKING = 10;
+
+/**
+ * Checks several starts booked together. Each is checked as if the earlier ones were already
+ * booked, so two choices that overlap, or that together pass the per-student limit, are refused.
+ * All or nothing: returns every slot, or the errors (prefixed "Class N" when several were chosen).
+ */
+export function checkNewBookings(
+  ctx: ScheduleContext,
+  email: string,
+  starts: IsoInstant[],
+): { slots: Slot[]; errors: [] } | { slots: null; errors: string[] } {
+  if (starts.length === 0) return { slots: null, errors: ['Choose at least one time.'] };
+  if (starts.length > MAX_CLASSES_PER_BOOKING) {
+    return { slots: null, errors: [`You can book at most ${MAX_CLASSES_PER_BOOKING} classes at once.`] };
+  }
+  if (new Set(starts).size !== starts.length) return { slots: null, errors: ['You chose the same time twice.'] };
+  const max = ctx.settings.maxUpcomingPerStudent;
+  const have = upcomingCount(ctx.bookings, email, ctx.now);
+  if (have + starts.length > max) {
+    const left = Math.max(0, max - have);
+    const error =
+      left === 0
+        ? `You already have ${have} upcoming classes, the most you can hold at once.`
+        : `You can hold ${max} upcoming classes at once and already have ${have}, so you can book ${left} more ` +
+          `(you chose ${starts.length}).`;
+    return { slots: null, errors: [error] };
+  }
+
+  const bookings = [...ctx.bookings];
+  const slots: Slot[] = [];
+  for (const [i, start] of starts.entries()) {
+    const result = checkNewBooking({ ...ctx, bookings }, email, start);
+    if (!result.slot) {
+      const prefix = starts.length > 1 ? `Class ${i + 1}: ` : '';
+      return { slots: null, errors: result.errors.map((e) => prefix + e) };
+    }
+    slots.push(result.slot);
+    // Hold the time so later choices can't overlap it.
+    bookings.push({
+      studentEmail: email,
+      start: result.slot.start,
+      end: result.slot.end,
+      status: 'CONFIRMED',
+    } as Booking);
+  }
+  return { slots, errors: [] };
+}
+
 /**
  * A booking the teacher makes for a student: any future start that doesn't overlap an active
  * booking. Availability, notice, booking window and the per-student limit don't apply, since

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import type { StudentBooking } from '../../../../shared/api';
 import { useQuery } from '../../api';
 import { ErrorText } from '../../components/Bits';
@@ -18,14 +18,12 @@ const FILTERS: { id: Filter; label: string }[] = [
 
 export function MyBookings() {
   const { user, now } = useSession();
-  const location = useLocation();
   const bookings = useQuery('myBookings');
   const lessons = useQuery('lessons');
   const [view, setView] = useBookingView();
   const [filter, setFilter] = useState<Filter>('upcoming');
   const [selected, setSelected] = useState<StudentBooking | null>(null);
   const lessonMap = useMemo(() => new Map((lessons.data ?? []).map((l) => [l.id, l])), [lessons.data]);
-  const justBooked = (location.state as { booked?: boolean } | null)?.booked;
 
   const t = now;
   const visible = (bookings.data ?? [])
@@ -46,7 +44,6 @@ export function MyBookings() {
           <Bilingual en="Book a class" ja="予約する" />
         </Link>
       </div>
-      {justBooked && <p className="success">Your class is booked. A confirmation email is on its way.</p>}
       <div className="toolbar">
         <div className="segmented" role="tablist" aria-label="Filter bookings">
           {FILTERS.map((f) => (

@@ -937,3 +937,74 @@ describe('announcements', () => {
     expect(err(yuki, 'announcements').error).toContain('Only the teacher');
   });
 });
+
+describe('booking several classes with lessons', () => {
+  const bookMany = (token, items, extra = {}) =>
+    backend.call(token, 'bookClasses', { items, topic: 'Travel', studentNote: '', ...extra });
+
+  it('books several open times at once, each with its own lesson', () => {
+    const slots = ok(minh, 'availability');
+    const [a, b] = [slots[0], slots.find((s) => Date.parse(s.start) >= Date.parse(slots[0].end))];
+    const res = bookMany(minh, [
+      { start: a.start, lessonId: 'lesson-small-talk' },
+      { start: b.start, lessonId: null },
+    ]);
+    expect(res.ok).toBe(true);
+    expect(res.data.map((x) => [x.start, x.lessonId, x.topic])).toEqual([
+      [a.start, 'lesson-small-talk', 'Travel'],
+      [b.start, null, 'Travel'],
+    ]);
+    expect(res.data[0]).not.toHaveProperty('privateNote');
+    const open = ok(yuki, 'availability').map((s) => s.start);
+    expect(open).not.toContain(a.start);
+    expect(open).not.toContain(b.start);
+    expect(mailTo('minh@example.com').filter((m) => m.subject.includes('Your class is booked'))).toHaveLength(2);
+    expect(
+      ok(teacher, 'notifications').notifications.filter((n) => n.kind === 'NEW_BOOKING' && !n.id.startsWith('note-')),
+    ).toHaveLength(2);
+  });
+
+  it('books nothing when any choice fails', () => {
+    const slots = ok(minh, 'availability');
+    const before = ok(minh, 'myBookings').length;
+    // The second slot overlaps the first (slots start every 30 minutes, classes last 50).
+    const res = bookMany(minh, [
+      { start: slots[0].start, lessonId: null },
+      { start: slots[1].start, lessonId: null },
+    ]);
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/^Class 2: /);
+    expect(ok(minh, 'myBookings')).toHaveLength(before);
+    expect(bookMany(minh, [{ start: slots[0].start, lessonId: 'no-such-lesson' }]).error).toContain('lesson');
+    expect(bookMany(minh, 'nope').error).toBe('Invalid items.');
+  });
+
+  it('counts every chosen class against the upcoming limit', () => {
+    ok(teacher, 'saveSchedule', {
+      ...ok(teacher, 'schedule'),
+      settings: { ...ok(teacher, 'schedule').settings, maxUpcomingPerStudent: 2 },
+    });
+    const slots = ok(minh, 'availability').filter((_, i) => i % 3 === 0);
+    // Minh has 1 upcoming class already.
+    const res = bookMany(
+      minh,
+      slots.slice(0, 2).map((s) => ({ start: s.start, lessonId: null })),
+    );
+    expect(res.error).toContain('you can book 1 more (you chose 2)');
+  });
+
+  it('still accepts the single-class book action with a lesson', () => {
+    const [slot] = ok(sofiaToken(), 'availability');
+    const booked = ok(sofiaToken(), 'book', {
+      start: slot.start,
+      topic: '',
+      studentNote: '',
+      lessonId: 'lesson-interviews',
+    });
+    expect(booked.lessonId).toBe('lesson-interviews');
+  });
+});
+
+function sofiaToken() {
+  return mockToken(STUDENTS[2].email, STUDENTS[2].name);
+}

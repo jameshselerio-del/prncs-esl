@@ -34,12 +34,12 @@ see their lessons and manage their profile.
 
 ## Student features
 
-| Page        | Contents                                                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Home        | Next class (time, lesson, contents, meeting link, materials), upcoming classes, recent classes with teacher feedback, lesson library |
-| Book        | Available slots for the booking window, grouped by day in the student's time zone; book with an optional topic/note                  |
-| My bookings | Upcoming, past and cancelled bookings in **table**, **calendar** (month) and **timeline** views; cancel within policy                |
-| Profile     | Name, time zone, English level, native language, learning goals, contact; email is read-only                                         |
+| Page        | Contents                                                                                                                                                                                                                                                                                 |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Home        | Next class (time, lesson, contents, meeting link, materials), upcoming classes, recent classes with teacher feedback, lesson library                                                                                                                                                     |
+| Book        | Open times in the student's time zone as a day list or a month calendar; pick one or more times (overlapping ones are blocked), choose a lesson for each or let the teacher choose, add an optional topic/note, and book them together. Students stay on the page and see a confirmation |
+| My bookings | Upcoming, past and cancelled bookings in **table**, **calendar** (month) and **timeline** views; cancel within policy                                                                                                                                                                    |
+| Profile     | Name, time zone, English level, native language, learning goals, contact; email is read-only                                                                                                                                                                                             |
 
 ## Teacher features
 
@@ -59,6 +59,10 @@ daily email allowance and refuses (sending nothing) if the announcement would
 exceed it, so the teacher can send it app-only or to fewer students.
 
 ## Booking rules (enforced server-side)
+
+- Several classes can be booked in one go (up to 10, `bookClasses`). It's all
+  or nothing: each time is re-checked as if the earlier ones were booked, so
+  overlapping choices and the per-student limit are enforced across the set.
 
 - Teacher hours are set in **Asia/Manila** (UTC+8, no daylight saving). All
   booking times are stored in UTC and shown in each viewer's time zone.
