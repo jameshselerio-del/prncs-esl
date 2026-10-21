@@ -4,6 +4,7 @@ import {
   canStudentCancel,
   canTeacherCancel,
   checkNewBooking,
+  checkNewBookings,
   checkTeacherBooking,
   DEFAULT_SETTINGS,
   generateSlots,
@@ -116,6 +117,41 @@ describe('checkNewBooking', () => {
       '2026-11-02T01:00:00.000Z',
     );
     expect(result.errors[0]).toContain('upcoming classes');
+  });
+});
+
+describe('checkNewBookings', () => {
+  const MON = (t: string) => `2026-10-26T${t}:00.000Z`;
+
+  it('books several open times together', () => {
+    const result = checkNewBookings(ctx(), 'ana@example.com', [MON('01:00'), MON('02:00'), MON('03:00')]);
+    expect(result.errors).toEqual([]);
+    expect(result.slots?.map((s) => s.start)).toEqual([MON('01:00'), MON('02:00'), MON('03:00')]);
+  });
+
+  it('refuses choices that overlap each other, naming the class', () => {
+    const result = checkNewBookings(ctx(), 'ana@example.com', [MON('01:00'), MON('01:30')]);
+    expect(result.slots).toBeNull();
+    expect(result.errors[0]).toMatch(/^Class 2: /);
+  });
+
+  it('counts all chosen classes against the per-student limit', () => {
+    const settings = { ...DEFAULT_SETTINGS, maxUpcomingPerStudent: 2 };
+    const result = checkNewBookings(ctx({ settings, bookings: [booking({})] }), 'ana@example.com', [
+      MON('03:00'),
+      '2026-11-02T01:00:00.000Z',
+    ]);
+    expect(result.errors).toEqual([
+      'You can hold 2 upcoming classes at once and already have 1, so you can book 1 more (you chose 2).',
+    ]);
+  });
+
+  it('refuses empty, duplicate or too many choices', () => {
+    expect(checkNewBookings(ctx(), 'ana@example.com', []).errors).toEqual(['Choose at least one time.']);
+    expect(checkNewBookings(ctx(), 'ana@example.com', [MON('01:00'), MON('01:00')]).errors).toEqual([
+      'You chose the same time twice.',
+    ]);
+    expect(checkNewBookings(ctx(), 'ana@example.com', Array(11).fill(MON('01:00'))).errors[0]).toContain('at most 10');
   });
 });
 

@@ -1598,6 +1598,189 @@ tr.inactive td {
   gap: 10px;
 }
 
+.book-view-tabs {
+  margin-bottom: 14px;
+}
+
+.booker.calendar {
+  grid-template-columns: minmax(280px, 380px) 1fr;
+}
+
+.slot-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.slot-panel h3 {
+  margin: 0;
+}
+
+.slot:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Month view of open days on the Book page. */
+.book-calendar {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.book-calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.book-calendar-nav strong {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.book-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.book-calendar-grid .weekday {
+  padding: 4px 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.book-calendar-grid .day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+  min-width: 0;
+  padding: 4px 2px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--pebble-text);
+  font-weight: 400;
+}
+
+.book-calendar-grid .day.open {
+  border-color: var(--border-strong);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.book-calendar-grid .day.active {
+  border: 2px solid var(--accent);
+}
+
+.book-calendar-grid .date {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.book-calendar-grid .count {
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.book-calendar-grid .picked {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+/* Chosen times, waiting to be booked together. */
+.booking-tray {
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-top: 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.booking-tray ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.booking-tray li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  font-size: 0.875rem;
+}
+
+.booking-tray li button.icon {
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0;
+}
+
+.confirm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.confirm-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.booked-banner {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
+.booked-banner ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
 /* Open slots are Matcha Mist; the chosen one fills with Moss. */
 .slot {
   min-height: 48px;
@@ -2327,8 +2510,13 @@ button.link.danger-text {
     font-size: 1.35rem;
   }
 
-  .booker {
+  .booker,
+  .booker.calendar {
     grid-template-columns: 1fr;
+  }
+
+  .booking-tray .primary {
+    width: 100%;
   }
 
   .home-top {

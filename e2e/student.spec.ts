@@ -42,12 +42,18 @@ test('books a class, sees it in all three views, and the slot disappears for oth
   const firstSlot = page.locator('.slot-grid .slot').first();
   const time = (await firstSlot.textContent())!;
   await firstSlot.click();
+  await page.getByRole('region', { name: 'Chosen times' }).getByRole('button', { name: 'Book class' }).click();
   await dialog(page)
     .getByLabel(/What would you like to focus on/)
     .fill('Phone calls');
-  await dialog(page).getByRole('button', { name: 'Book class' }).click();
+  await dialog(page)
+    .getByRole('button', { name: /Book class/ })
+    .click();
 
-  await expect(page.getByText('Your class is booked.')).toBeVisible();
+  // Students stay on the Book page after booking.
+  await expect(page.getByRole('status')).toContainText('Your class is booked.');
+  await expect(page).toHaveURL(/#\/book$/);
+  await page.getByRole('link', { name: 'View My bookings' }).click();
   await chooseTab(page, 'Table');
   await expect(page.getByRole('row', { name: /Phone calls/ })).toContainText('Confirmed');
 
@@ -95,4 +101,35 @@ test('students cannot reach teacher pages', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Hi, Yuki' })).toBeVisible();
   // The API refuses teacher actions too, not just the UI.
   expect(await api(page, YUKI, 'allBookings')).toMatchObject({ ok: false, error: 'Only the teacher can do this.' });
+});
+
+test('books several classes at once, with a lesson, from the calendar view', async ({ page }) => {
+  await openAs(page, MINH, '/book');
+  await chooseTab(page, 'Calendar');
+  const days = page.locator('.book-calendar-grid .day.open');
+  await days.nth(0).click();
+  const slots = page.locator('.slot-grid .slot');
+  await slots.nth(0).click();
+  // The next slot overlaps the chosen class, so it can't be picked as well.
+  await expect(slots.nth(1)).toBeDisabled();
+  await days.nth(1).click();
+  await slots.nth(0).click();
+  await expect(days.nth(0).locator('.picked')).toHaveText('1');
+
+  const tray = page.getByRole('region', { name: 'Chosen times' });
+  await expect(tray.getByRole('listitem')).toHaveCount(2);
+  await tray.getByRole('button', { name: 'Book 2 classes' }).click();
+  await dialog(page).getByRole('combobox').first().selectOption({ label: 'Small talk at work (Elementary)' });
+  await expect(dialog(page)).toContainText('Greetings, weekend plans');
+  await dialog(page)
+    .getByRole('button', { name: /Book 2 classes/ })
+    .click();
+
+  const banner = page.getByRole('status');
+  await expect(banner).toContainText('Your 2 classes are booked.');
+  await expect(banner).toContainText('Small talk at work');
+  await expect(tray).toContainText('No times chosen yet.');
+
+  const mine = (await api(page, MINH, 'myBookings')).data as { lessonId: string | null }[];
+  expect(mine.filter((b) => b.lessonId === 'lesson-small-talk')).toHaveLength(2);
 });

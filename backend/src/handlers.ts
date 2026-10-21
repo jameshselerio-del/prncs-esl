@@ -3,7 +3,8 @@ import {
   canRecordOutcome,
   canStudentCancel,
   canTeacherCancel,
-  checkNewBooking,
+  checkNewBookings,
+  MAX_CLASSES_PER_BOOKING,
   checkTeacherBooking,
   generateSlots,
   type ScheduleContext,
@@ -185,6 +186,67 @@ function findBooking(id: string): Booking {
   const booking = db.bookings().find((b) => b.id === id);
   if (!booking) throw new ApiError('Booking not found.');
   return booking;
+}
+
+/**
+ * Books one or more classes for the signed-in student, all or nothing: every start is re-checked
+ * inside the lock (see checkNewBookings), so two students can't take the same time.
+ */
+function bookClasses(ctx: Context, rawItems: unknown[], payload: Payload): StudentBooking[] {
+  const me = user(ctx);
+  if (me.role !== 'STUDENT') throw new ApiError('Only students can book classes.');
+  const topic = text(payload, 'topic', 200).trim();
+  const studentNote = text(payload, 'studentNote', 1000).trim();
+  const items = rawItems.map((raw) => {
+    if (typeof raw !== 'object' || raw === null) throw new ApiError('Invalid items.');
+    const item = raw as Payload;
+    const start = text(item, 'start', 40, true);
+    const lessonId = item.lessonId === null || item.lessonId === undefined ? null : text(item, 'lessonId', 64) || null;
+    return { start, lessonId };
+  });
+  const lessonIds = new Set(db.lessons().map((l) => l.id));
+  if (items.some((i) => i.lessonId && !lessonIds.has(i.lessonId))) {
+    throw new ApiError('That lesson is no longer available. Please choose another.');
+  }
+
+  const { bookings, settings } = withLock(() => {
+    const schedule = scheduleContext(ctx.now);
+    const result = checkNewBookings(
+      schedule,
+      me.email,
+      items.map((i) => i.start),
+    );
+    if (!result.slots) throw new ApiError(result.errors.join('\n'));
+    const teacher = teacherOf(db.users());
+    const created = result.slots.map((slot, i): Booking => ({
+      id: Utilities.getUuid(),
+      studentEmail: me.email,
+      start: slot.start,
+      end: slot.end,
+      status: 'CONFIRMED',
+      lessonId: items[i].lessonId,
+      topic,
+      studentNote,
+      meetingLink: schedule.settings.defaultMeetingLink,
+      materials: '',
+      feedback: '',
+      privateNote: '',
+      createdAt: ctx.now.toISOString(),
+      cancelledAt: null,
+      cancelledBy: null,
+      cancelReason: '',
+      reminderSentAt: null,
+    }));
+    for (const b of created) {
+      db.insertBooking(b);
+      addNotification(teacher?.email, 'NEW_BOOKING', b, ctx.now, { actorName: me.name, detail: b.topic });
+    }
+    return { bookings: created, settings: schedule.settings };
+  });
+
+  const teacher = teacherOf(db.users());
+  for (const b of bookings) notify.booked(b, me, teacher, settings);
+  return bookings.map(studentView);
 }
 
 type Handler<A extends Action> = (ctx: Context, payload: Payload) => Api[A][1];
@@ -574,45 +636,15 @@ export const handlers: { [A in Action]: Handler<A> } = {
   },
 
   book(ctx, payload) {
-    const me = user(ctx);
-    if (me.role !== 'STUDENT') throw new ApiError('Only students can book classes.');
-    const start = text(payload, 'start', 40, true);
-    const topic = text(payload, 'topic', 200).trim();
-    const studentNote = text(payload, 'studentNote', 1000).trim();
+    const lessonId = payload.lessonId ?? null;
+    const [booking] = bookClasses(ctx, [{ start: payload.start, lessonId }], payload);
+    return booking;
+  },
 
-    const { booking, settings } = withLock(() => {
-      const schedule = scheduleContext(ctx.now);
-      const result = checkNewBooking(schedule, me.email, start);
-      if (!result.slot) throw new ApiError(result.errors.join('\n'));
-      const created: Booking = {
-        id: Utilities.getUuid(),
-        studentEmail: me.email,
-        start: result.slot.start,
-        end: result.slot.end,
-        status: 'CONFIRMED',
-        lessonId: null,
-        topic,
-        studentNote,
-        meetingLink: schedule.settings.defaultMeetingLink,
-        materials: '',
-        feedback: '',
-        privateNote: '',
-        createdAt: ctx.now.toISOString(),
-        cancelledAt: null,
-        cancelledBy: null,
-        cancelReason: '',
-        reminderSentAt: null,
-      };
-      db.insertBooking(created);
-      return { booking: created, settings: schedule.settings };
-    });
-
-    const teacher = teacherOf(db.users());
-    withLock(() =>
-      addNotification(teacher?.email, 'NEW_BOOKING', booking, ctx.now, { actorName: me.name, detail: booking.topic }),
-    );
-    notify.booked(booking, me, teacher, settings);
-    return studentView(booking);
+  bookClasses(ctx, payload) {
+    const items = payload.items;
+    if (!Array.isArray(items) || items.length > MAX_CLASSES_PER_BOOKING) throw new ApiError('Invalid items.');
+    return bookClasses(ctx, items as unknown[], payload);
   },
 
   cancelBooking(ctx, payload) {
