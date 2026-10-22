@@ -7,6 +7,7 @@ import { ErrorText, ExternalLink, LessonCard, RichText, StatusBadge } from '../.
 import { Modal } from '../../components/Modal';
 import { useSession } from '../../session';
 import { fmtRange, relative } from '../../time';
+import { Tr } from '../../hints';
 
 interface Props {
   booking: StudentBooking;
@@ -50,7 +51,10 @@ export function BookingDetail({ booking: b, lessons, onClose, onChanged }: Props
       {upcoming && (
         <p>
           {b.meetingLink ? (
-            <ExternalLink href={b.meetingLink}>Join class</ExternalLink>
+            <ExternalLink href={b.meetingLink}>
+              Join class
+              <Tr id="class.join" />
+            </ExternalLink>
           ) : (
             <span className="hint">Your teacher will add the meeting link before class.</span>
           )}
@@ -107,6 +111,7 @@ export function BookingDetail({ booking: b, lessons, onClose, onChanged }: Props
               <div className="actions">
                 <button type="button" className="danger" disabled={busy} onClick={cancel}>
                   {busy ? 'Cancelling…' : 'Confirm cancellation'}
+                  <Tr id="class.confirmCancel" />
                 </button>
                 <button type="button" onClick={() => setConfirming(false)}>
                   Keep class
@@ -116,6 +121,7 @@ export function BookingDetail({ booking: b, lessons, onClose, onChanged }: Props
           ) : (
             <button type="button" onClick={() => setConfirming(true)}>
               Cancel class
+              <Tr id="class.cancel" />
             </button>
           )
         ) : (

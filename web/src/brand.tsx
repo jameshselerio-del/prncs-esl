@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { LegalLinks } from './components/LegalLinks';
+import { HintLanguagePicker } from './hints';
 
 /** Komorebi English brand copy (see the brand identity canvas). */
 export const BRAND = {
@@ -95,7 +96,10 @@ export function SignInLayout({ children }: { children: ReactNode }) {
             </span>
           </p>
         </div>
-        <div className="signin-card">{children}</div>
+        <div className="signin-card">
+          <HintLanguagePicker compact />
+          {children}
+        </div>
       </main>
       <SiteFooter />
     </div>

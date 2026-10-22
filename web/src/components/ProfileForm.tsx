@@ -3,6 +3,7 @@ import type { Profile } from '../../../shared/types';
 import { LEVELS, profileErrors } from '../../../shared/validation';
 import { timeZoneOptions } from '../time';
 import { ErrorText } from './Bits';
+import { Tr } from '../hints';
 
 interface Props {
   initial: Profile;
@@ -43,14 +44,17 @@ export function ProfileForm({ initial, email, submitLabel, onSubmit, student = t
     <form className="form" onSubmit={submit}>
       <label>
         Email
+        <Tr id="profile.email" />
         <input value={email} disabled />
       </label>
       <label>
         Name
+        <Tr id="profile.name" />
         <input required maxLength={100} value={form.name} onChange={(e) => set('name', e.target.value)} />
       </label>
       <label>
         Time zone
+        <Tr id="profile.timeZone" />
         <select value={form.timeZone} onChange={(e) => set('timeZone', e.target.value)}>
           {zones.map((z) => (
             <option key={z}>{z}</option>
@@ -62,6 +66,7 @@ export function ProfileForm({ initial, email, submitLabel, onSubmit, student = t
         <>
           <label>
             English level
+            <Tr id="profile.level" />
             <select value={form.level} onChange={(e) => set('level', e.target.value as Profile['level'])}>
               <option value="">Not sure</option>
               {LEVELS.map((l) => (
@@ -73,10 +78,12 @@ export function ProfileForm({ initial, email, submitLabel, onSubmit, student = t
           </label>
           <label>
             Native language
+            <Tr id="profile.nativeLanguage" />
             <input maxLength={60} value={form.nativeLanguage} onChange={(e) => set('nativeLanguage', e.target.value)} />
           </label>
           <label>
             Learning goals
+            <Tr id="profile.goals" />
             <textarea
               maxLength={1000}
               placeholder="e.g. business meetings, travel, exam preparation"
@@ -88,6 +95,7 @@ export function ProfileForm({ initial, email, submitLabel, onSubmit, student = t
       )}
       <label>
         Contact (optional)
+        <Tr id="profile.contact" />
         <input
           maxLength={200}
           placeholder="Phone, LINE, Skype…"
@@ -106,6 +114,7 @@ export function ProfileForm({ initial, email, submitLabel, onSubmit, student = t
       {saved && <p className="success">Saved.</p>}
       <button type="submit" className="primary" disabled={saving || problems.length > 0}>
         {saving ? 'Saving…' : submitLabel}
+        <Tr id="profile.save" />
       </button>
     </form>
   );

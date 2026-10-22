@@ -10,6 +10,7 @@ import { useApi } from '../api';
 import { useAuth } from '../auth';
 import { useSession } from '../session';
 import { ErrorText } from './Bits';
+import { Tr } from '../hints';
 import { NewPasswordFields } from './PasswordSignIn';
 
 /** Profile section: add a username and password, or change them (needs the current password). */
@@ -56,7 +57,10 @@ export function PasswordSettings() {
 
   return (
     <section className="password-settings" aria-labelledby="password-title">
-      <h3 id="password-title">{hasPassword ? 'Username and password' : 'Sign in with a password'}</h3>
+      <h3 id="password-title">
+        {hasPassword ? 'Username and password' : 'Sign in with a password'}
+        <Tr id="password.title" />
+      </h3>
       <p className="hint">
         {hasPassword
           ? 'You sign in with this username and password.'
@@ -65,6 +69,7 @@ export function PasswordSettings() {
       <form className="form" onSubmit={submit}>
         <label>
           Username
+          <Tr id="signup.username" />
           <input
             required
             autoComplete="username"
@@ -80,6 +85,7 @@ export function PasswordSettings() {
         {hasPassword && (
           <label>
             Current password
+            <Tr id="password.current" />
             <input
               required
               type="password"
@@ -101,6 +107,7 @@ export function PasswordSettings() {
         <div className="actions">
           <button type="submit" className="primary" disabled={busy}>
             {busy ? 'Saving…' : hasPassword ? 'Change password' : 'Turn on password sign-in'}
+            <Tr id="password.save" />
           </button>
         </div>
       </form>

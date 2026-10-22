@@ -2,6 +2,7 @@ import type { Profile as ProfileFields } from '../../../shared/types';
 import { hasEmail } from '../../../shared/validation';
 import { useApi } from '../api';
 import { PasswordSettings } from '../components/PasswordSettings';
+import { Tr } from '../hints';
 import { ProfileForm } from '../components/ProfileForm';
 import { useSession } from '../session';
 
@@ -19,7 +20,10 @@ export function Profile() {
 
   return (
     <>
-      <h2>My profile</h2>
+      <h2>
+        My profile
+        <Tr id="profile.title" />
+      </h2>
       <ProfileForm
         initial={initial}
         email={hasEmail(user.email) ? user.email : 'No email address'}

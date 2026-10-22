@@ -7,13 +7,14 @@ import { BookingViews, useBookingView, ViewSwitcher } from '../../components/Boo
 import { useSession } from '../../session';
 import { Bilingual, Loading } from '../../brand';
 import { BookingDetail } from './BookingDetail';
+import { Tr, type HintId } from '../../hints';
 
 type Filter = 'upcoming' | 'past' | 'cancelled' | 'all';
-const FILTERS: { id: Filter; label: string }[] = [
-  { id: 'upcoming', label: 'Upcoming' },
-  { id: 'past', label: 'Past' },
-  { id: 'cancelled', label: 'Cancelled' },
-  { id: 'all', label: 'All' },
+const FILTERS: { id: Filter; label: string; hint: HintId }[] = [
+  { id: 'upcoming', label: 'Upcoming', hint: 'filter.upcoming' },
+  { id: 'past', label: 'Past', hint: 'filter.past' },
+  { id: 'cancelled', label: 'Cancelled', hint: 'filter.cancelled' },
+  { id: 'all', label: 'All', hint: 'filter.all' },
 ];
 
 export function MyBookings() {
@@ -39,7 +40,10 @@ export function MyBookings() {
   return (
     <>
       <div className="toolbar">
-        <h2>My bookings</h2>
+        <h2>
+          My bookings
+          <Tr id="nav.bookings" />
+        </h2>
         <Link to="/book" className="button primary">
           <Bilingual en="Book a class" ja="予約する" />
         </Link>
@@ -56,6 +60,7 @@ export function MyBookings() {
               onClick={() => setFilter(f.id)}
             >
               {f.label}
+              <Tr id={f.hint} />
             </button>
           ))}
         </div>

@@ -41,6 +41,17 @@ see their lessons and manage their profile.
 | My bookings | Upcoming, past and cancelled bookings in **table**, **calendar** (month) and **timeline** views; cancel within policy                                                                                                                                                                    |
 | Profile     | Name, time zone, English level, native language, learning goals, contact; email is read-only                                                                                                                                                                                             |
 
+## Translation hints
+
+Many students are beginners, so student-facing pages show short **Japanese** or
+**Traditional Chinese (Taiwan)** translations under key English labels, buttons
+and headings, and an ⓘ button that opens a longer translation of explanations
+(booking rules, how to pick times, sign-up and password reset). Each viewer
+picks 日本語, 繁體中文 or Off in the account menu or on the sign-in page; the
+choice is saved in the browser (default Japanese, or Chinese when the browser
+is set to Chinese). The existing bilingual brand text (e.g. "Book class ·
+予約確定") is separate and always shown. Teacher-only pages have no hints.
+
 ## Teacher features
 
 | Page          | Contents                                                                                                                                                                              |

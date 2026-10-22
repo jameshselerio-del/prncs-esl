@@ -23,6 +23,10 @@ Read `docs/requirements.md` and `docs/architecture.md` before changing behaviour
 - **Booking emails have a bell twin:** where a handler calls `notify.*` for a
   booking event, also call `addNotification` (inside `withLock`) so the in-app
   bell matches the emails (`shared/notifications.ts`).
+- **Student-facing labels get translation hints:** add the Japanese and
+  Traditional Chinese text to `HINTS` in `web/src/hints.tsx` and render
+  `<Tr id>` (short, under the English) or `<InfoTip id>` (longer explanations).
+  Leave the existing `Bilingual` brand text as it is.
 - Teacher-only actions are listed in `ADMIN_ACTIONS` (`shared/api.ts`) and
   enforced in `backend/src/main.ts`.
 - Sheet columns are defined once in `SCHEMA` (`backend/src/db.ts`); add columns

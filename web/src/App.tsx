@@ -4,6 +4,7 @@ import type { MeResult } from '../../shared/api';
 import { useApi, useQuery } from './api';
 import { APP_NAME, useAuth } from './auth';
 import { BRAND, LoadingScreen, Logo, SiteFooter } from './brand';
+import { Tr, type HintId } from './hints';
 import { ErrorText } from './components/Bits';
 import { AccountMenu } from './components/AccountMenu';
 import { NotificationBell } from './components/NotificationBell';
@@ -22,12 +23,12 @@ import { TeacherBookings } from './pages/teacher/TeacherBookings';
 import { SessionContext, type Session } from './session';
 import { browserTimeZone } from './time';
 
-const STUDENT_NAV = [
-  { to: '/', label: 'Home' },
-  { to: '/book', label: 'Book a class' },
-  { to: '/bookings', label: 'My bookings' },
+const STUDENT_NAV: { to: string; label: string; hint?: HintId }[] = [
+  { to: '/', label: 'Home', hint: 'nav.home' },
+  { to: '/book', label: 'Book a class', hint: 'nav.book' },
+  { to: '/bookings', label: 'My bookings', hint: 'nav.bookings' },
 ];
-const TEACHER_NAV = [
+const TEACHER_NAV: { to: string; label: string; hint?: HintId }[] = [
   { to: '/', label: 'Bookings' },
   { to: '/availability', label: 'Availability' },
   { to: '/lessons', label: 'Lessons' },
@@ -69,6 +70,7 @@ export function App() {
             {nav.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.to === '/'}>
                 {n.label}
+                {n.hint && <Tr id={n.hint} />}
               </NavLink>
             ))}
           </nav>
