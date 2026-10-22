@@ -5,6 +5,7 @@ import type { Slot } from '../../../../shared/types';
 import { levelLabel } from '../../../../shared/validation';
 import { useApi, useQuery } from '../../api';
 import { Bilingual, Loading } from '../../brand';
+import { InfoTip, Tr } from '../../hints';
 import { ErrorText } from '../../components/Bits';
 import { Modal } from '../../components/Modal';
 import { useSession } from '../../session';
@@ -125,7 +126,8 @@ export function BookingPicker({ upcoming, onBooked }: Props) {
         </p>
       ) : (
         <p className="hint">
-          Tap one or more times, then book them together. You can choose up to {classes(left)} now.
+          Tap one or more times, then book them together. You can choose up to {classes(left)} now.{' '}
+          <InfoTip id="book.howTo" />
         </p>
       )}
       <ErrorText error={slots.error} />
@@ -147,6 +149,7 @@ export function BookingPicker({ upcoming, onBooked }: Props) {
                 onClick={() => setView(v)}
               >
                 {v === 'list' ? 'List' : 'Calendar'}
+                <Tr id={v === 'list' ? 'book.list' : 'book.calendar'} />
               </button>
             ))}
           </div>
@@ -216,7 +219,10 @@ export function BookingPicker({ upcoming, onBooked }: Props) {
 
           <section className="booking-tray" aria-label="Chosen times">
             {n === 0 ? (
-              <span className="hint">No times chosen yet.</span>
+              <span className="hint">
+                No times chosen yet.
+                <Tr id="book.noneChosen" />
+              </span>
             ) : (
               <ul>
                 {chosen.map((s) => (
@@ -244,6 +250,7 @@ export function BookingPicker({ upcoming, onBooked }: Props) {
               }}
             >
               {n > 1 ? `Book ${classes(n)}` : 'Book class'}
+              <Tr id="book.submit" />
             </button>
           </section>
         </>
@@ -259,7 +266,10 @@ export function BookingPicker({ upcoming, onBooked }: Props) {
                   <li key={s.start}>
                     <strong>{fmtRange(s.start, s.end, user.timeZone)}</strong>
                     <label>
-                      Lesson
+                      <span>
+                        Lesson <InfoTip id="book.lessonTip" />
+                      </span>
+                      <Tr id="book.lesson" />
                       <select
                         value={lessonFor[s.start] ?? ''}
                         onChange={(e) => setLessonFor((m) => ({ ...m, [s.start]: e.target.value }))}
@@ -280,6 +290,7 @@ export function BookingPicker({ upcoming, onBooked }: Props) {
             </ul>
             <label>
               What would you like to focus on? (optional)
+              <Tr id="book.focus" />
               <input
                 maxLength={200}
                 placeholder="e.g. job interview practice"
@@ -289,6 +300,7 @@ export function BookingPicker({ upcoming, onBooked }: Props) {
             </label>
             <label>
               Note for your teacher (optional)
+              <Tr id="book.note" />
               <textarea maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} />
             </label>
             {n > 1 && <p className="hint">The focus and note apply to every class you're booking.</p>}
@@ -299,6 +311,7 @@ export function BookingPicker({ upcoming, onBooked }: Props) {
               </button>
               <button type="button" onClick={() => setConfirming(false)}>
                 Back
+                <Tr id="book.back" />
               </button>
             </div>
           </form>

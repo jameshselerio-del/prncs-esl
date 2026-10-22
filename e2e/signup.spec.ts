@@ -10,7 +10,7 @@ test('a new Google user completes a profile and becomes a student', async ({ pag
   await page.getByRole('button', { name: 'New student (not registered)' }).click();
 
   await expect(page.getByRole('heading', { name: /Welcome to/ })).toBeVisible();
-  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Nora New');
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('Nora New');
   await page.getByLabel('English level').selectOption({ label: 'Intermediate' });
   await page.getByLabel('Learning goals').fill('Business meetings');
   await page.getByRole('button', { name: 'Create my account' }).click();

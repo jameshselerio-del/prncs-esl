@@ -114,7 +114,7 @@ test('a visitor signs up with email, username and password, then completes a pro
   await confirm.getByRole('button', { name: 'Create account' }).click();
 
   await expect(page.getByRole('heading', { name: /Welcome to/ })).toBeVisible();
-  await page.getByLabel('Name', { exact: true }).fill('Kenji Sato');
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Kenji Sato');
   await page.getByRole('button', { name: 'Create my account' }).click();
   await expect(page.getByRole('heading', { name: 'Hi, Kenji' })).toBeVisible();
 });

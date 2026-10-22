@@ -9,6 +9,7 @@ import {
   usernameErrors,
 } from '../../../shared/validation';
 import { callApi } from '../api';
+import { InfoTip, Tr } from '../hints';
 import { ErrorText } from './Bits';
 
 type Mode = 'signin' | 'forgot' | 'reset' | 'signup' | 'confirm';
@@ -52,6 +53,7 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
   const codeField = (
     <label>
       Code
+      <Tr id="signup.code" />
       <input
         required
         inputMode="numeric"
@@ -85,11 +87,18 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
           })
         }
       >
-        <h2>Create an account</h2>
-        <p className="hint">We'll email you a code to confirm your address. Class confirmations are sent there too.</p>
+        <h2>
+          Create an account
+          <Tr id="signin.create" />
+        </h2>
+        <p className="hint">
+          We'll email you a code to confirm your address. Class confirmations are sent there too.{' '}
+          <InfoTip id="signup.tip" />
+        </p>
         <p className="hint">Don't use email? Ask your teacher to set up your account for you.</p>
         <label>
           Email
+          <Tr id="signup.email" />
           <input
             required
             type="email"
@@ -101,6 +110,7 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
         </label>
         <label>
           Username
+          <Tr id="signup.username" />
           <input
             required
             autoComplete="username"
@@ -123,6 +133,7 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
         <ErrorText error={error} />
         <button type="submit" className="primary" disabled={busy}>
           {busy ? 'Sending…' : 'Email me a code'}
+          <Tr id="signup.sendCode" />
         </button>
         <button type="button" className="link" onClick={() => go('signin')}>
           I already have an account
@@ -151,6 +162,7 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
         <ErrorText error={error} />
         <button type="submit" className="primary" disabled={busy}>
           {busy ? 'Creating…' : 'Create account'}
+          <Tr id="signup.submit" />
         </button>
         <button type="button" className="link" onClick={() => go('signup')}>
           Change details or send a new code
@@ -162,6 +174,7 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
   const loginField = (
     <label>
       Username or email
+      <Tr id="signin.login" />
       <input
         required
         autoComplete="username"
@@ -186,16 +199,23 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
           })
         }
       >
-        <h2>Forgot your password?</h2>
-        <p className="hint">Enter your username or email and we'll email you a code to set a new password.</p>
+        <h2>
+          Forgot your password?
+          <Tr id="signin.forgot" />
+        </h2>
+        <p className="hint">
+          Enter your username or email and we'll email you a code to set a new password. <InfoTip id="reset.tip" />
+        </p>
         <p className="hint">No email on your account? Ask your teacher to reset your password.</p>
         {loginField}
         <ErrorText error={error} />
         <button type="submit" className="primary" disabled={busy}>
           {busy ? 'Sending…' : 'Email me a code'}
+          <Tr id="signup.sendCode" />
         </button>
         <button type="button" className="link" onClick={() => go('signin')}>
           Back to sign in
+          <Tr id="signin.back" />
         </button>
       </form>
     );
@@ -224,9 +244,11 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
         <ErrorText error={error} />
         <button type="submit" className="primary" disabled={busy}>
           {busy ? 'Saving…' : 'Set new password and sign in'}
+          <Tr id="reset.submit" />
         </button>
         <button type="button" className="link" onClick={() => go('forgot')}>
           Send a new code
+          <Tr id="reset.resend" />
         </button>
       </form>
     );
@@ -246,6 +268,7 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
       {loginField}
       <label>
         Password
+        <Tr id="signin.password" />
         <input
           required
           type="password"
@@ -258,14 +281,17 @@ export function PasswordSignIn({ onSignIn }: { onSignIn: (token: string) => void
       <ErrorText error={error} />
       <button type="submit" className="primary" disabled={busy}>
         {busy ? 'Signing in…' : 'Sign in'}
+        <Tr id="signin.submit" />
       </button>
       <button type="button" className="link" onClick={() => go('forgot')}>
         Forgot password?
+        <Tr id="signin.forgot" />
       </button>
       <div className="signup-prompt">
         <span className="hint">New here?</span>
         <button type="button" className="secondary" onClick={() => go('signup')}>
           Create an account
+          <Tr id="signin.create" />
         </button>
       </div>
     </form>
@@ -290,6 +316,7 @@ export function NewPasswordFields({
     <>
       <label>
         {label}
+        <Tr id={label === 'Password' ? 'signin.password' : 'reset.newPassword'} />
         <input
           required
           type="password"
@@ -303,6 +330,7 @@ export function NewPasswordFields({
       </label>
       <label>
         Confirm {label.toLowerCase()}
+        <Tr id={label === 'Password' ? 'signup.confirmPassword' : 'reset.confirmPassword'} />
         <input
           required
           type="password"

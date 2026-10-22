@@ -7,6 +7,7 @@ import { useSession } from '../../session';
 import { fmtDate, fmtRange, fmtTime, relative } from '../../time';
 import { Bilingual, LeafShape, Loading } from '../../brand';
 import { BookingDetail } from './BookingDetail';
+import { Tr } from '../../hints';
 
 /** Upcoming classes listed in the Home summary; the rest are a click away in My bookings. */
 const SUMMARY_LIMIT = 4;
@@ -41,7 +42,10 @@ export function Home() {
       <div className="home-top">
         <section className="hero card">
           <LeafShape className="hero-leaf" />
-          <span className="label">Next class</span>
+          <span className="label">
+            Next class
+            <Tr id="home.nextClass" />
+          </span>
           {!bookings.data ? (
             <Loading />
           ) : next ? (
@@ -61,12 +65,16 @@ export function Home() {
                 )}
                 <button type="button" onClick={() => setSelected(next)}>
                   Class details
+                  <Tr id="home.details" />
                 </button>
               </div>
               {nextLesson?.summary && <p className="hint">{nextLesson.summary}</p>}
             </>
           ) : (
-            <p>You have no upcoming classes yet.</p>
+            <p>
+              You have no upcoming classes yet.
+              <Tr id="home.noUpcoming" />
+            </p>
           )}
         </section>
 
@@ -97,7 +105,10 @@ export function Home() {
       {bookings.data && (
         <section className="card upcoming-summary" aria-labelledby="upcoming-title">
           <div className="summary-head">
-            <h3 id="upcoming-title">Upcoming classes</h3>
+            <h3 id="upcoming-title">
+              Upcoming classes
+              <Tr id="home.upcoming" />
+            </h3>
             <div className="summary-stats">
               <span className="stat">
                 <strong>{upcoming.length}</strong> booked
@@ -129,6 +140,7 @@ export function Home() {
             {upcoming.length > SUMMARY_LIMIT && <span className="hint">+{upcoming.length - SUMMARY_LIMIT} more</span>}
             <Link to="/bookings" className="button secondary">
               View My bookings
+              <Tr id="bookings.view" />
             </Link>
           </div>
         </section>
@@ -136,7 +148,10 @@ export function Home() {
 
       {recent.length > 0 && (
         <section>
-          <h3>Recent classes</h3>
+          <h3>
+            Recent classes
+            <Tr id="home.recent" />
+          </h3>
           <ul className="list">
             {recent.map((b) => (
               <li key={b.id}>
@@ -159,7 +174,10 @@ export function Home() {
       )}
 
       <section>
-        <h3>Lessons</h3>
+        <h3>
+          Lessons
+          <Tr id="home.lessons" />
+        </h3>
         {!lessons.data ? (
           <Loading />
         ) : lessons.data.length === 0 ? (

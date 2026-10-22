@@ -3,15 +3,16 @@ import type { StudentBooking } from '../../../shared/api';
 import type { Lesson } from '../../../shared/types';
 import { fmtDate, fmtDayHeading, fmtMonth, fmtTime, localDateKey } from '../time';
 import { StatusBadge } from './Bits';
+import { Tr, type HintId } from '../hints';
 
 export type ViewBooking = StudentBooking & { studentName?: string };
 export type BookingView = 'table' | 'calendar' | 'timeline';
 
 const VIEW_KEY = 'bookingView';
-const VIEWS: { id: BookingView; label: string }[] = [
-  { id: 'table', label: 'Table' },
-  { id: 'calendar', label: 'Calendar' },
-  { id: 'timeline', label: 'Timeline' },
+const VIEWS: { id: BookingView; label: string; hint: HintId }[] = [
+  { id: 'table', label: 'Table', hint: 'view.table' },
+  { id: 'calendar', label: 'Calendar', hint: 'view.calendar' },
+  { id: 'timeline', label: 'Timeline', hint: 'view.timeline' },
 ];
 
 /** Remembers the chosen view per browser; falls back to the table when storage is unavailable. */
@@ -48,6 +49,7 @@ export function ViewSwitcher({ view, onChange }: { view: BookingView; onChange: 
           onClick={() => onChange(v.id)}
         >
           {v.label}
+          <Tr id={v.hint} />
         </button>
       ))}
     </div>

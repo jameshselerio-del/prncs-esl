@@ -4,6 +4,7 @@ import { hasEmail, levelLabel } from '../../../shared/validation';
 import { useAuth } from '../auth';
 import { useSession } from '../session';
 import { useTheme, type ThemeChoice } from '../theme';
+import { HintLanguagePicker, Tr } from '../hints';
 import { usePopover } from './usePopover';
 
 /** The Google profile picture from the ID token's payload (mock tokens have none). */
@@ -117,13 +118,22 @@ export function AccountMenu() {
 
           {/* Choosing a link closes the menu. */}
           <nav className="account-links" aria-label="Account" onClick={() => setOpen(false)}>
-            <Link to="/profile">Profile settings</Link>
+            <Link to="/profile">
+              Profile settings
+              <Tr id="menu.profile" />
+            </Link>
             {isTeacher ? (
               <Link to="/availability">Availability &amp; booking settings</Link>
             ) : (
               <>
-                <Link to="/bookings">My bookings</Link>
-                <Link to="/announcements">Announcements</Link>
+                <Link to="/bookings">
+                  My bookings
+                  <Tr id="nav.bookings" />
+                </Link>
+                <Link to="/announcements">
+                  Announcements
+                  <Tr id="menu.announcements" />
+                </Link>
               </>
             )}
             {/* Only for Google sign-ins; password users may have no Google account at all. */}
@@ -135,7 +145,10 @@ export function AccountMenu() {
           </nav>
 
           <fieldset className="account-theme">
-            <legend>Theme</legend>
+            <legend>
+              Theme
+              <Tr id="menu.theme" />
+            </legend>
             <div className="segmented">
               {THEMES.map((t) => (
                 <label key={t.id} className={theme === t.id ? 'active' : ''}>
@@ -152,8 +165,11 @@ export function AccountMenu() {
             </div>
           </fieldset>
 
+          <HintLanguagePicker />
+
           <button type="button" className="account-signout" onClick={() => signOut()}>
             Sign out
+            <Tr id="menu.signOut" />
           </button>
         </div>
       )}

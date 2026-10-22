@@ -4,6 +4,7 @@ import { notificationText, todoText, type AppNotification, type Inbox, type Todo
 import { isHttpUrl } from '../../../shared/validation';
 import { useApi } from '../api';
 import { LeafMark } from '../brand';
+import { Tr } from '../hints';
 import { useSession } from '../session';
 import { fmtDate, fmtTime, relative } from '../time';
 import { usePopover } from './usePopover';
@@ -115,10 +116,14 @@ export function NotificationBell() {
       {open && (
         <div className="bell-panel" id={panelId} role="region" aria-label="Notifications">
           <div className="bell-head">
-            <h2>Notifications</h2>
+            <h2>
+              Notifications
+              <Tr id="bell.title" />
+            </h2>
             {unread.length > 0 && (
               <button type="button" className="link" onClick={() => markRead({ all: true })}>
                 Mark all as read
+                <Tr id="bell.markAll" />
               </button>
             )}
           </div>
@@ -134,7 +139,10 @@ export function NotificationBell() {
             <>
               {inbox.todos.length > 0 && (
                 <section aria-label="To do">
-                  <h3 className="bell-section">To do</h3>
+                  <h3 className="bell-section">
+                    To do
+                    <Tr id="bell.todo" />
+                  </h3>
                   <ul className="bell-list">
                     {inbox.todos.map((t) => (
                       <TodoItem
@@ -151,7 +159,10 @@ export function NotificationBell() {
               )}
               {inbox.notifications.length > 0 && (
                 <section aria-label="Updates">
-                  <h3 className="bell-section">Updates</h3>
+                  <h3 className="bell-section">
+                    Updates
+                    <Tr id="bell.updates" />
+                  </h3>
                   <ul className="bell-list">
                     {inbox.notifications.map((n) => {
                       // Announcements aren't about a class, so they have no class time.

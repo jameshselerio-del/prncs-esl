@@ -5,6 +5,7 @@ import { useQuery } from '../../api';
 import { useSession } from '../../session';
 import { fmtRange } from '../../time';
 import { BookingPicker } from './BookingPicker';
+import { InfoTip, Tr } from '../../hints';
 
 export function Book() {
   const { user, settings, now } = useSession();
@@ -24,7 +25,11 @@ export function Book() {
       </h2>
       <p className="hint">
         Classes are {settings.lessonMinutes} minutes. Times are shown in {user.timeZone}. You can cancel up to{' '}
-        {settings.cancelNoticeHours} hours before a class.
+        {settings.cancelNoticeHours} hours before a class.{' '}
+        <InfoTip
+          id="book.rules"
+          params={{ minutes: settings.lessonMinutes, zone: user.timeZone, hours: settings.cancelNoticeHours }}
+        />
       </p>
 
       {justBooked.length > 0 && (
@@ -33,6 +38,7 @@ export function Book() {
             {justBooked.length === 1 ? 'Your class is booked.' : `Your ${justBooked.length} classes are booked.`}
           </strong>{' '}
           A confirmation email is on its way.
+          <Tr id="book.done" />
           <ul>
             {justBooked.map((b) => (
               <li key={b.id}>
@@ -41,7 +47,10 @@ export function Book() {
               </li>
             ))}
           </ul>
-          <Link to="/bookings">View My bookings</Link>
+          <Link to="/bookings">
+            View My bookings
+            <Tr id="bookings.view" />
+          </Link>
         </section>
       )}
 
